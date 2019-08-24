@@ -1,0 +1,9 @@
+
+- hosts: freshmeat
+  remote_user: njl
+  become: true
+  roles:
+     - role: mikolak-net.raspi_config
+       raspi_config_replace_user:
+         name: njl
+         path_to_ssh_key: "/Users/njl/.ssh/id_rsa_stronger.pub"
