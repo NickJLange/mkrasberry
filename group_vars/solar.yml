@@ -1,2 +1,3 @@
-ssmtp_mailhub: smtp.gmail.com:587
-ssmtp_auth_user: nick.lange@gmail.com
+path_to_ssh_key: "/Users/njl/.ssh/id_rsa_stronger.pub"
+openVPN_key_length: 2048
+local_ssh_user: "njl"

@@ -1,0 +1,6 @@
+
+- hosts: "{{ansibleTarget}}"
+  remote_user: "{{local_ssh_user}}"
+  become: true
+  roles:
+     - role: tvTunerSetup
