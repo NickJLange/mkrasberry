@@ -1,0 +1,10 @@
+- name: Install msmtp and mailx package
+  apt:
+    name:
+      - msmtp
+      - bsd-mailx
+    state: present
+    force_apt_get: yes
+  tags:
+    - packages
+  register: msmtp_present

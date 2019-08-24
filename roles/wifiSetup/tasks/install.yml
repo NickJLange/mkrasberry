@@ -1,0 +1,46 @@
+---
+
+
+- name: Check if wpa supplicant path  exists
+  stat:
+    path: "{{wpa_supplicant_file}}"
+  register: wpaFile
+
+
+- name: Back up existing config file (just in case)
+  copy:
+    src: "{{wpa_supplicant_file}}"
+    dest: "{{wpa_supplicant_file}}.backup"
+    mode: 0644
+    owner: "root"
+    group: "root"
+    remote_src: yes
+  when:
+    wpaFile.stat.exists == True
+
+- name: Install wpa supplicant file into place
+  template:
+    src: "{{ role_path }}/templates/wpa_supplicant.conf"
+    dest: "{{wpa_supplicant_file}}"
+    mode: 0644
+    owner: root
+    group: root
+  register:
+    wpa_supplicant_updated
+  when:
+    wifiSSID != "" and wifiPassword != ""
+
+- name: down the wlan0 interface
+  shell: ip link set wlan0 down;
+  when:     wpa_supplicant_updated is defined
+#    cron_file: phoneHome_sh
+
+- name: reload the config
+  shell: wpa_cli -i wlan0 reconfigure
+  when:     wpa_supplicant_updated is defined
+#    cron_file: phoneHome_sh
+
+- name: up the wlan0 interface
+  shell: ip link set wlan0 up
+  when:     wpa_supplicant_updated is defined
+#    cron_file: phoneHome_sh

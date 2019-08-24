@@ -1,0 +1,12 @@
+---
+
+- import_tasks: install.yml
+  become: yes
+  when: msmtp_enabled
+  tags: [msmtp_install]
+
+- import_tasks: configure_user.yml
+  become: yes
+  become_user: "{{ansible_user}}"
+  when: msmtp_present
+  tags: [msmtp_setup]

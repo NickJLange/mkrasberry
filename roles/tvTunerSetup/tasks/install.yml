@@ -1,0 +1,19 @@
+---
+
+- name: Install requisite packages
+  apt:
+    name:
+      - build-essential
+      - git
+      - pcscd
+      - libpcsclite-dev
+      - libccid
+      - pcsc-tools
+      - nodejs
+      - git-core
+      - vainfo
+    state: present
+    force_apt_get: yes
+  tags:
+    - tvtuner_packages
+  register: tvtuner_packages_present

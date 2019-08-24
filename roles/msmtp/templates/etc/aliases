@@ -1,0 +1,2 @@
+www: root
+root: nick.lange+{{msmtp_hostname}}+root@gmail.com
