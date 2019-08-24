@@ -1,0 +1,2 @@
+ssmtp_mailhub: smtp.gmail.com:587
+ssmtp_auth_user: nick.lange@gmail.com
