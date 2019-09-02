@@ -1,12 +1,12 @@
 
-- hosts: hosts: "{{ansibleTarget}}"
+- hosts:  "{{ansibleTarget}}"
   remote_user: "{{local_ssh_user}}"
   become: true
   roles:
      - role: Stouts.hostname
      - role: msmtp
      - role: ansible-role-pivpn
-     - role: wifiSetup
+#     - role: wifiSetup
      - role: role-install-gcloud
        become: yes
        become_user: "{{local_ssh_user}}"

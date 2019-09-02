@@ -1,8 +1,10 @@
 
-- hosts: hosts: "{{ansibleTarget}}"
+
+- hosts: "{{ansibleTarget}}"
   remote_user: "{{local_ssh_user}}"
   become: true
   roles:
-     - role: mikolak-net.raspi_config
-       raspi_config_replace_user:
+    - role: mikolak-net.raspi_config
+      raspi_config_replace_user:
          name: "{{local_ssh_user}}"
+    - role: "locales"

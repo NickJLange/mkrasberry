@@ -1,3 +1,0 @@
-path_to_ssh_key: "/Users/njl/.ssh/id_rsa_stronger.pub"
-openVPN_key_length: 2048
-local_ssh_user: "njl"
