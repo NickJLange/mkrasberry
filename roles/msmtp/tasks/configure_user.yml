@@ -1,69 +1,51 @@
-- name: "get file stat for {{msmtp_mailrc_location}} to be able to perform check in the following task"
+---
+- name: "get file stat for {{ msmtp_mailrc_location }} to be able to perform check in the following task"
   stat:
-    path: "{{msmtp_mailrc_location}}"
+    path: "{{ msmtp_mailrc_location }}"
   register: msmtp_mailrc
   tags:
     - msmtp_mailrc
 
-- name: "Backup {{msmtp_mailrc_location}} file if it exists"
-  copy: src="{{msmtp_mailrc_location}}" dest="{{msmtp_mailrc_location}}.bak" remote_src=yes
+- name: "Backup {{ msmtp_mailrc_location }} file if it exists"
+  copy: src="{{ msmtp_mailrc_location }}" dest="{{ msmtp_mailrc_location }}.bak" remote_src=yes
 #  remote_src: yes
   when: msmtp_mailrc.stat.exists
   tags:
     - msmtp_mailrc
 
-- name: "Creating new {{msmtp_mailrc_location}}"
-  shell: printf "set sendmail='/usr/bin/msmtp'" > {{msmtp_mailrc_location}}
+- name: "Creating new {{ msmtp_mailrc_location }}"
+  shell: printf "set sendmail='/usr/bin/msmtp'" > {{ msmtp_mailrc_location }}
   tags:
     - msmtp_mailrc
 
 - name: "get file stat for {{msmtp_msmtprc_location}} to be able to perform check in the following task"
   stat:
-    path: "{{msmtp_msmtprc_location}}"
+    path: "{{ msmtp_msmtprc_location }}"
   register: msmtp_msmtprc
   tags:
     - msmtp_msmtprc
 
 - name: "Backup {{msmtp_msmtprc_location}} file if it exists"
-  copy: src="{{msmtp_msmtprc_location}}" dest="{{msmtp_msmtprc_location}}.bak" remote_src=yes
+  copy: src="{{ msmtp_msmtprc_location }}" dest="{{ msmtp_msmtprc_location }}.bak" remote_src=yes
 #  remote_src: yes
   when: msmtp_msmtprc.stat.exists
   tags:
     - msmtp_msmtprc
 
 - name: Copy file with owner and permissions
-  copy:
-    src: /Users/njl/.msmtprc
-    dest: "{{msmtp_msmtprc_location}}"
-    owner: njl
-    group: njl
+  template:
+    src: etc/msmtprc
+    dest: "{{ msmtp_msmtprc_location }}"
+    owner: "{{ msmtp_user }}"
+    group: "{{ msmtp_group }}"
     mode: '0600'
   tags:
     - msmtp_msmtprc
 
-- name: Update gpass for specific host
-  lineinfile:
-    dest: "{{msmtp_msmtprc_location}}"
-    regexp: "^password "
-    line: "password {{msmtp_gmail_app_password}}"
-  tags:
-    - msmtp_msmtprc
-
-- name: Update from for specific host
-  lineinfile:
-    dest: "{{msmtp_msmtprc_location}}"
-    regexp: "^from "
-    line: "from nick.lange+{{msmtp_hostname}}+{{msmtp_user}}@gmail.com"
-  tags:
-    - msmtp_msmtprc
-
-- name: "hey now wait a sec"
-  shell: whoami
-  tags: msmtp_success
 
 - name: "Testing success"
   command:
-    chdir: "/home/{{ansible_user}}"
+    chdir: "/home/{{ msmtp_user }}"
     argv:
         - "/usr/bin/mail"
         - "-v"

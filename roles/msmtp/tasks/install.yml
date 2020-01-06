@@ -3,8 +3,19 @@
     name:
       - msmtp
       - bsd-mailx
+      - ca-certificates
     state: present
     force_apt_get: yes
   tags:
     - packages
+    - msmtp_setup
   register: msmtp_present
+- name: Copy file with owner and permissions
+  template:
+    src: etc/aliases
+    dest: "/etc/aliases"
+    owner: "{{ msmtp_user }}"
+    group: "{{ msmtp_group }}"
+    mode: '0600'
+  tags:
+    - msmtp_install
