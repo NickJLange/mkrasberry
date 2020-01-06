@@ -12,8 +12,26 @@
       - nodejs
       - git-core
       - vainfo
+      - nodejs
+      - npm
+      - munin
     state: present
     force_apt_get: yes
+    update_cache: yes
+    cache_valid_time: 2592000
   tags:
     - tvtuner_packages
   register: tvtuner_packages_present
+- name: Install pm2
+  npm:
+    name: pm2
+    production: yes
+    global: yes
+  tags: tvtuner_packages
+
+- name: Install nodejs libs
+  npm:
+    name: mirakurun
+    production: yes
+    global: yes
+  tags: tvtuner_packages
