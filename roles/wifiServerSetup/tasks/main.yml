@@ -1,0 +1,17 @@
+---
+
+
+- name: Install requisite packages
+  apt:
+    name:
+      - dnsmasq
+      - openvpn
+      - hostapd
+    force_apt_get: yes
+  tags:
+    - wifiServerSetup_packages
+  register: wifiServerSetup_packages_present
+
+- import_tasks: install.yml
+  tags: [wifiServerSetup_install]
+  when: wifiServerSetup_packages_present
