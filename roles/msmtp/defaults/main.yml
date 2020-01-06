@@ -2,6 +2,8 @@
 
 msmtp_enabled: yes
 msmtp_user: "{{ansible_user}}"
+msmtp_group: "{{ansible_user}}"
 msmtp_hostname: "{{inventory_hostname}}"
 msmtp_msmtprc_location: "/home/{{msmtp_user}}/.msmtprc"
 msmtp_mailrc_location: "/home/{{msmtp_user}}/.mailrc"
+msmtp_log: "~/msmtp.log"
