@@ -1,6 +1,6 @@
-
-- hosts:  "{{ansibleTarget}}"
-  remote_user: "{{local_ssh_user}}"
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
   become: true
   roles:
      - role: Stouts.hostname
@@ -9,7 +9,7 @@
 #     - role: wifiSetup
      - role: role-install-gcloud
        become: yes
-       become_user: "{{local_ssh_user}}"
+       become_user: "{{ local_ssh_user }}"
      - role: phoneHome
        become: yes
-       become_user: "{{local_ssh_user}}"
+       become_user: "{{ local_ssh_user }}"
