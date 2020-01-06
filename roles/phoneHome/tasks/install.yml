@@ -10,8 +10,8 @@
   file:
     path: /var/data/
     state: directory
-    owner: "{{ansible_user}}"
-    group: "{{ansible_user}}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: 0755
   become: yes
   become_user: root
@@ -23,8 +23,8 @@
   file:
     path: /var/data/iphistory/
     state: directory
-    owner: "{{ansible_user}}"
-    group: "{{ansible_user}}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: 0755
   become: yes
   become_user: root
@@ -41,8 +41,8 @@
     src: "{{ item }}"
     dest: "/home/{{ ansible_user }}/bin/"
     mode: 0755
-    owner: "{{ansible_user}}"
-    group: "{{ansible_user}}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   with_fileglob:
     - templates/phoneHome/bin/*
   when:
@@ -53,7 +53,7 @@
   cron:
     name: phoneHome with latest ip daily
     special_time: daily
-    user:  "{{ansible_user}}"
+    user:  "{{ ansible_user }}"
     job: "/home/{{ansible_user}}/bin/iphistory.sh"
 #    cron_file: iphistory_sh
 
@@ -61,7 +61,7 @@
   cron:
     env: yes
     name:  LISTENPORT
-    value: "{{phoneHomePort}}"
+    value: "{{ phoneHomePort }}"
 #    cron_file: phoneHome_sh
 
 
@@ -69,6 +69,6 @@
   cron:
     name: login to gcloud and wait for orders
     minute: 0,30
-    user:  "{{ansible_user}}"
-    job: "/home/{{ansible_user}}/bin/phoneHome.sh"
+    user:  "{{ ansible_user }}"
+    job: "/home/{{ ansible_user }}/bin/phoneHome.sh"
 #    cron_file: phoneHome_sh
