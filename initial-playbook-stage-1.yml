@@ -8,3 +8,15 @@
       raspi_config_replace_user:
          name: "{{ local_ssh_user }}"
     - role: "locales"
+  tasks:
+    - name: Install requisite packages (likely present)
+      apt:
+        name:
+          - vim
+        state: present
+        force_apt_get: yes
+        cache_valid_time: 84600
+    - name: Lock the Raspberry PI user
+      user:
+        name: pi
+        password_lock: true

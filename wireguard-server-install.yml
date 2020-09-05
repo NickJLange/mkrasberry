@@ -1,0 +1,17 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  environment:
+    VAULT_USER: "{{ vault_username }}"
+    VAULT_PASSWORD: "{{ vault_password }}"
+    VAULT_AUTHTYPE: userpass
+    VAULT_ADDR: "{{ vault_address }}"
+  pre_tasks:
+    - name:
+      set_fact:
+        provision_wg_server: True
+        provision_wg_client: False
+
+  roles:
+     - role: wireguardServerSetup

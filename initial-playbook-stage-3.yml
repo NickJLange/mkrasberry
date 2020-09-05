@@ -1,0 +1,11 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  roles:
+     - role: role-install-gcloud
+       become: yes
+       become_user: "{{ local_ssh_user }}"
+     - role: phoneHome
+       become: yes
+       become_user: "{{ local_ssh_user }}"
