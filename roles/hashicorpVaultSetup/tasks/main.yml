@@ -1,0 +1,10 @@
+---
+- import_tasks: add_user.yml
+  tags: [vault_add_user]
+
+- import_tasks: install.yml
+  tags: [vault_install_binary]
+
+
+#- import_tasks: configure_client_interface.yml
+#  tags: [wireguard_configure_client]

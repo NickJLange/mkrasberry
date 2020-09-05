@@ -1,0 +1,9 @@
+[Interface]
+Address = {{ wireguard_client_ip }}
+ListenPort = {{ wireguard_client_listen_port }}
+PrivateKey = {{ wireguard_client_private_key }}
+
+[Peer]
+PublicKey = {{ wireguard_server_public_key }}
+AllowedIPs = {{ wireguard_client_allowed_ip_range }}
+Endpoint = {{ wireguard_client_server_endpoint }}

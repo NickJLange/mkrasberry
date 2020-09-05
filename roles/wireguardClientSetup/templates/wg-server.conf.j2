@@ -1,0 +1,13 @@
+[Interface]
+Address = {{ wireguard_server_listen_ip }}
+ListenPort = {{ wireguard_server_listen_port }}
+PrivateKey = {{ wireguard_server_private_key }}
+
+
+{% for ip, pubkey in wireguard_server_clients.items() %}
+{% if not ip == "PrivateKey" %}
+[Peer]
+PublicKey = {{ pubkey }}
+AllowedIPs = {{ ip }}
+{% endif %}
+{% endfor %}

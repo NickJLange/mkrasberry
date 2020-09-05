@@ -1,0 +1,70 @@
+---
+- name: "Configure Interface (default to {{ wireguard_interface }})"
+  block:
+    - name: Check if wireguard directory exists
+      stat:
+        path: "{{ wireguard_remote_directory }}"
+      register: wg_dir
+
+    - name: create wireguard directory if not exists
+      file:
+        path: "{{ wireguard_remote_directory }}"
+        state: directory
+        owner: "root"
+        group: "root"
+        mode: 0700
+      when:
+        wg_dir.stat.exists == False
+      register: created_wg_dir
+    - name: Fetch Wireguard Client Pub Keys
+      hashivault_read:
+        secret: "{{ ansible_hostname }}"
+        mount_point: 'kv/wireguard-server'
+#        key: centauriAlpha
+        version: 2
+      register: wgrawsecret
+    - name: Cleanup data
+      set_fact:
+        wireguard_server_clients: "{{wgrawsecret.value}}"
+        wireguard_server_private_key: "{{wgrawsecret.value.PrivateKey}}"
+
+    - debug: msg="Known secrets are {{ wgrawsecret.value }}"
+    - debug: msg="PrivateKey {{ wireguard_server_private_key }}"
+    - debug: msg="Known secrets are {{ wireguard_server_clients }}"
+
+
+    ### FIXME: Needs cleanup
+    - name: Generate WireGuard configuration file
+      template:
+        src: wg-server.conf.j2
+        dest: "{{ wireguard_remote_directory }}/{{ wireguard_interface }}.conf"
+        owner: root
+        group: root
+        mode: 0600
+      notify:
+        - reconfigure wireguard
+      when:
+        wg_dir.stat.exists == True or created_wg_dir is defined
+
+    - name: Check if reload-module-on-update is set
+      stat:
+        path: "{{ wireguard_remote_directory }}/.reload-module-on-update"
+      register: reload_module_on_update
+      tags:
+        - wg-config
+
+    - name: Set WireGuard reload-module-on-update
+      file:
+        dest: "{{ wireguard_remote_directory }}/.reload-module-on-update"
+        state: touch
+      when: not reload_module_on_update.stat.exists
+      tags:
+        - wg-config
+
+    - name: Start and enable WireGuard service
+      service:
+        name: "wg-quick@{{ wireguard_interface }}"
+        state: started
+        enabled: yes
+
+  tags: wireguard_configure_client
