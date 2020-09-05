@@ -1,0 +1,8 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  roles:
+     - role: hashicorpVaultSetup
+       become: yes
+       become_user: "{{ local_ssh_user }}"
