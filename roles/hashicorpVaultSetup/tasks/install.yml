@@ -1,0 +1,124 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+- name: Install requisite pip (likely present)
+  apt:
+    name:
+      - python3-pip
+      - python-setuptools
+      - python3-setuptools
+    state: present
+    force_apt_get: yes
+    cache_valid_time: 84600
+  become: yes
+  become_user: root
+
+- name: Install PreRequisites
+  pip:
+      name:
+        - hvac
+      executable: /usr/bin/pip3
+  become: yes
+
+- stat:
+    path: "{{ vault_install_path }}/{{ vault_version }}"
+  register: preexisting
+  tags:
+    - vault
+
+# - debug: var=preexisting
+- block:
+  - name: create the install path
+    file:
+      path: "{{ vault_install_path }}/{{ vault_version }}/"
+      state: directory
+      mode: 0755
+      owner: "{{vault_user}}"
+      group: "{{vault_group}}"
+    become: true
+    become_user: root
+  - block:
+    - name: download vault
+      get_url:
+        url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_arm.zip"
+        dest: /tmp/vault.zip
+        mode: 0777
+        checksum: "{{ vault_checksum }}"
+
+    - name: decompress archive
+      command: "unzip /tmp/vault.zip -d {{ vault_install_path }}/{{ vault_version }}/"
+    - name: remove the tempoary install archive
+      file:
+        path: /tmp/vault.zip
+        state: absent
+    - name: Create data directory
+      file:
+        path: "{{ vault_data_path }}"
+        state: directory
+        mode: 0755
+        owner: "{{vault_user}}"
+        group: "{{vault_group}}"
+    - name: Create Config directory
+      file:
+        path: "{{ vault_config_path }}"
+        state: directory
+        mode: 0755
+        owner: "{{vault_user}}"
+        group: "{{vault_group}}"
+
+
+    become: true
+    become_user: "{{ vault_user }}"
+  - name: link the versioned binary to the local bin
+    file:
+      src: "{{ vault_install_path }}/{{ vault_version }}/vault"
+      dest: /usr/local/bin/vault
+      owner: "{{vault_user}}"
+      group: "{{vault_group}}"
+      state: link
+    become: true
+    become_user: root
+  when: preexisting.stat.exists != true
+  tags: vault_install_binary
+
+
+
+###############################################################################
+################################ CONFIGURE ####################################
+###############################################################################
+
+- block:
+  - name: configure vault for systemd
+    template:
+      src: vault.service.j2
+      dest: "{{ systemd_dir }}/vault.service"
+      mode: 0644
+    notify: reload systemd
+
+  - name: configure vault
+    template:
+      src: vault.config.j2
+      dest: "{{vault_config_path}}/vault.config"
+      mode: 0600
+      owner: "{{vault_user}}"
+      group: "{{vault_group}}"
+    notify: restart vault
+
+#  - name: register vault with consul
+#    template:
+#      src: vault-consul.json.j2
+#      dest: /etc/consul/vault-consul.json
+#      mode: 0644
+
+  - name: enable vault
+    service:
+      name: vault
+      enabled: yes
+      state: started
+    tags:
+      - vault
+
+  become: yes
+  become_user: root
+  tags: vault_install_binary
