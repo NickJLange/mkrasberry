@@ -1,0 +1,4 @@
+[submodule "mkrasberry_config"]
+	path = mkrasberry_config
+	url = git@github.com:NickJLange/mkrasberry_config.git
+	branch = master

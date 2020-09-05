@@ -5,11 +5,10 @@
   roles:
      - role: Stouts.hostname
      - role: msmtp
-     - role: ansible-role-pivpn
-#     - role: wifiSetup
-     - role: role-install-gcloud
-       become: yes
-       become_user: "{{ local_ssh_user }}"
-     - role: phoneHome
-       become: yes
-       become_user: "{{ local_ssh_user }}"
+#     - role: ansible-role-pivpn
+     - role: wifiClientSetup
+  tasks:
+     - name: Lock the Raspberry PI user
+       user:
+         name: pi
+         password_lock: true
