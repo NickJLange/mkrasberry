@@ -2,3 +2,27 @@
 	path = mkrasberry_config
 	url = git@github.com:NickJLange/mkrasberry_config.git
 	branch = master
+[submodule "roles/Stouts.hostname"]
+	path = roles/Stouts.hostname
+	url = https://github.com/Stouts/Stouts.hostname.git
+	branch = master
+[submodule "roles/ansible-docker"]
+	path = roles/ansible-docker
+	url = https://github.com/nickjj/ansible-docker.git
+	branch = master
+[submodule "roles/ansible-locales"]
+	path = roles/ansible-locales
+	url = https://github.com/Oefenweb/ansible-locales.git
+	branch = master
+[submodule "roles/podmanSetupRaspberryPi"]
+	path = roles/podmanSetupRaspberryPi
+	url = git@github.com:NickJLange/podmanSetupRaspberryPi.git
+	branch = master
+[submodule "roles/ansible-role-pivpn"]
+	path = roles/ansible-role-pivpn
+	url = git@github.com:NickJLange/ansible-role-pivpn.git
+	branch = master
+[submodule "roles/role-install-gcloud"]
+	path = roles/role-install-gcloud
+	url = https://github.com/ansible/role-install-gcloud.git
+	branch = master
