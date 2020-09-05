@@ -1,0 +1,275 @@
+---
+
+- name: Check if HostAPd directory exists
+  stat:
+    path: "/etc/hostapd/"
+  register: wifiServerSetup_etc_hostapd
+
+- name: Copy HostAPd  into place
+  template:
+    src: "{{ role_path }}/templates/etc/hostapd/hostapd.conf"
+    dest: "/etc/hostapd/hostapd.conf"
+    mode: 0644
+    owner: root
+    group: root
+  when: wifiServerSetup_etc_hostapd.stat.exists == True
+
+- name: Copy dnsmasq config into place
+  template:
+    src: "{{ role_path }}/templates/etc/dnsmasq.conf"
+    dest: "/etc/hostapd/dnsmasq.conf"
+    mode: 0644
+    owner: root
+    group: root
+
+- name:  Check if repo directory exists
+  stat:
+    path: "{{podman.buildDir}}/src/github.com/containers/buildah/"
+  register: podman_buildah_repo
+
+- name: Clone Buildah (conmon) Repo
+  git:
+    repo: https://github.com/containers/buildah.git
+    version: v1.10.1
+    dest: "{{podman.buildDir}}/src/github.com/containers/buildah/"
+  become_user: "{{ansible_user}}"
+  environment:
+        GOPATH: "{{podman.buildDir}}/"
+  when: podman_buildah_repo.stat.exists == False
+
+
+- name: Compile Buildah
+  make:
+    chdir: "{{podman.buildDir}}/src/github.com/containers/buildah/"
+  register: podman_buildah_buildok
+  become_user: "{{ansible_user}}"
+
+- name: Install Buildah
+  make:
+    target: install
+    chdir: "{{podman.buildDir}}/src/github.com/containers/buildah/"
+  when: podman_buildah_buildok
+
+- name: Install CNI Plugins (conmon)
+  git:
+    repo: https://github.com/containernetworking/plugins.git
+    version: master
+    dest: "{{podman.buildDir}}//src/github.com/containernetworking/plugins"
+  become_user: "{{ansible_user}}"
+  environment:
+        GOPATH: "{{podman.buildDir}}/"
+
+- name: Compile CNI
+  shell: ./build_linux.sh
+  args:
+    executable: /bin/bash
+    chdir: "{{podman.buildDir}}//src/github.com/containernetworking/plugins"
+  environment:
+    GOPATH: "{{podman.buildDir}}/"
+  register: podman_cni_build_ok
+
+- name: "Cookie time "
+  debug:
+    msg: "Mike Check {{podman_cni_build_ok}}"
+
+- name:  Check if CNI bindir "/usr/libexec/cni" exists
+  stat:
+    path: "/usr/libexec/cni"
+  register: podman_libexec_cni
+
+- name: create "/usr/libexec/cni" top-Level
+  file:
+    path: "/usr/libexec/cni"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    podman_libexec_cni.stat.exists == False
+
+- name: Get files on remote machine under bin
+  find:
+    paths: "{{podman.buildDir}}//src/github.com/containernetworking/plugins/bin/"
+  register: podman_cni_bin_list
+
+- name: Copy Compiled Binaries
+  copy:
+    src: "{{item.path}}"
+    dest: "/usr/libexec/cni/"
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: yes
+  with_items: "{{ podman_cni_bin_list.files }}"
+  when: podman_cni_build_ok.failed == False
+
+- name: Check if CNI TLD /etc/cni exists
+  stat:
+    path: "/etc/cni"
+  register: podman_etc_cni
+
+- name: create "/etc/cni" top-Level
+  file:
+    path: "/etc/cni"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    podman_etc_cni.stat.exists == False
+
+- name:  Check if CNI TLD /etc/cni/net.d exists
+  stat:
+    path: "/etc/cni/net.d"
+  register: podman_etc_netd
+
+- name: create /etc/cni/net.d top-Level
+  file:
+    path: "/etc/cni/net.d"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    podman_etc_netd.stat.exists == False
+
+- name: Copy CNI Networking Template into place
+  template:
+    src: "{{ role_path }}/templates/etc/cni/net.d/99-loopback.conf"
+    dest: "/etc/cni/net.d/99-loopback.conf"
+    mode: 0644
+    owner: root
+    group: root
+
+- name:  Check if CNI TLD /etc/containers exists
+  stat:
+    path: "/etc/containers"
+  register: podman_etc_containers
+
+- name: create "/etc/containers" top-Level
+  file:
+    path: "/etc/containers"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    podman_etc_containers.stat.exists == False
+
+- name: Copy Container Registry
+  template:
+    src: "{{ role_path }}/templates/etc/containers/registries.conf"
+    dest: /etc/containers/registries.conf
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Copy container policy
+  template:
+    src: "{{ role_path }}/templates/etc/containers/policy.json"
+    dest: /etc/containers/policy.json
+    mode: 0644
+    owner: root
+    group: root
+---
+
+- name: Install Connection Monitor (conmon)
+  git:
+    repo: https://github.com/containers/conmon.git
+    version: master
+    dest: "{{podman.buildDir}}/conmon/"
+  become_user: "{{ansible_user}}"
+
+
+- name: Compile Connection Monitor (Part 1)
+  make:
+    chdir: "{{podman.buildDir}}/conmon"
+  register: podman_conmon_build_ok
+
+- name: Copy Compiled Binaries
+  copy:
+    src: "{{podman.buildDir}}/conmon/bin/conmon"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: yes
+  when: podman_conmon_build_ok.failed == False
+
+- name:  Check if CNI bindir "/usr/libexec/podman" exists
+  stat:
+    path: "/usr/local/libexec/podman"
+  register: podman_libexec_cni
+
+- name: create "/usr/libexec/podman" top-Level
+  file:
+    path: "/usr/local/libexec/podman"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    podman_libexec_cni.stat.exists == False
+
+- name: Copy Compiled Binaries (Part 2)
+  copy:
+    src: "{{podman.buildDir}}/conmon/bin/conmon"
+    dest: /usr/local/libexec/podman/conmon
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: yes
+  when: podman_conmon_build_ok.failed == False
+---
+
+- name: Clone Podman (conmon) Repo
+  git:
+    repo: https://github.com/containers/libpod/
+    version: v1.5.1
+    dest: "{{podman.buildDir}}/src/github.com/containers/libpod"
+  become_user: "{{ansible_user}}"
+  environment:
+        GOPATH: "{{podman.buildDir}}/"
+
+
+- name: Compile Podman
+  make:
+    chdir: "{{podman.buildDir}}/src/github.com/containers/libpod"
+  register: podman_podman_buildok
+  become_user: "{{ansible_user}}"
+
+- name: Install Podman
+  make:
+    target: install
+    chdir: "{{podman.buildDir}}/src/github.com/containers/libpod"
+  when: podman_podman_buildok
+---
+
+- name: Clone Skopeo (conmon) Repo
+  git:
+    repo: https://github.com/containers/skopeo/
+    version: v0.1.39
+    dest: "{{podman.buildDir}}/src/github.com/containers/skopeo/"
+  become_user: "{{ansible_user}}"
+  environment:
+        GOPATH: "{{podman.buildDir}}/"
+
+
+- name: Compile Skopeo
+  make:
+    target: binary-local
+    chdir: "{{podman.buildDir}}/src/github.com/containers/skopeo/"
+  register: podman_skopeo_buildok
+  become_user: "{{ansible_user}}"
+  when: podman_skopeo_repo.stat.exists == True
+
+
+- name: Copy Compiled Binaries (Part 2)
+  copy:
+    src: "{{podman.buildDir}}/src/github.com/containers/skopeo/skopeo"
+    dest: /usr/local/bin/skopeo
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: yes
+  when:   podman_skopeo_buildok.failed == False

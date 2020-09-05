@@ -1,0 +1,33 @@
+---
+
+- import_tasks: install.yml
+  when: provision_wg_client or provision_wg_server
+  tags: [wireguard_install_binary]
+
+- import_tasks: generate_keys.yml
+  when: provision_wg_client
+  tags: [wireguard_generate_client_keys]
+
+- import_tasks: configure_client_interface.yml
+  when: provision_wg_client
+  tags: [wireguard_configure_client]
+
+- import_tasks: add_wg_client.yml
+  when: add_wg_client
+  tags: [wireguard_add_cient]
+
+
+- import_tasks: generate_keys.yml
+  when: provision_wg_server
+  tags: [wireguard_generate_client_keys]
+
+- import_tasks: configure_server_interface.yml
+  when: provision_wg_server
+  tags: [wireguard_configure_server]
+
+
+## Workflow
+## Assume that the key was generated in the install-client playbook
+## look for $hostname in Vault / Public Key
+## where do I get the client IP???
+## look for wireguard_client_ip from hostlist

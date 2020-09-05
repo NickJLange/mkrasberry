@@ -36,6 +36,19 @@
     path: "/home/{{ ansible_user }}/bin/"
   register: userbin
 
+- name: create userbin directory if not exists
+  file:
+    path: "/home/{{ ansible_user }}/bin/"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0755
+  when:
+    userbin.stat.exists == False
+  register: created_userbin
+
+
+
 - name: Copy phoneHome scripts into place
   copy:
     src: "{{ item }}"
@@ -46,7 +59,7 @@
   with_fileglob:
     - templates/phoneHome/bin/*
   when:
-    userbin.stat.exists == True
+    userbin.stat.exists == True or created_userbin is defined
 
 
 - name: Creates a cron file for phone home under {{ansible_user}}
@@ -68,7 +81,15 @@
 - name: Creates a cron file for phone home under {{ansible_user}}
   cron:
     name: login to gcloud and wait for orders
-    minute: 0,30
+    minute: 10,30,50
     user:  "{{ ansible_user }}"
     job: "/home/{{ ansible_user }}/bin/phoneHome.sh"
+#    cron_file: phoneHome_sh
+
+- name: Creates a cron file for phone home under {{ansible_user}}
+  cron:
+    name: login to terraAlpha and wait for orders
+    minute: 10,30,50
+    user:  "{{ ansible_user }}"
+    job: "/home/{{ ansible_user }}/bin/phoneRealHome.sh"
 #    cron_file: phoneHome_sh
