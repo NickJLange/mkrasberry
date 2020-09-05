@@ -1,0 +1,74 @@
+---
+- name: Install requisite pip (likely present)
+  apt:
+    name:
+      - python3-pip
+      - python-pip
+      - python-setuptools
+      - python3-setuptools
+    state: present
+    force_apt_get: yes
+    cache_valid_time: 84600
+  become: yes
+  become_user: root
+
+- name: Install PreRequisites
+  pip:
+      name:
+        - hvac
+      executable: /usr/bin/pip3
+  become: yes
+
+- name: Install PreRequisites
+  pip:
+      name:
+        - hvac
+      executable: /usr/bin/pip
+  become: yes
+- name: Check if wireguard is installed
+  stat:
+    path: "{{ wireguard_binary }}"
+  register: wg_bin
+- name: Install Wireguard Binary
+  block:
+    - name: Add testing branch so we can get wireguard installer
+      apt_repository:
+        repo: deb http://raspbian.raspberrypi.org/raspbian/ testing main contrib non-free rpi
+        state: present
+        update_cache: yes
+    - name: Install requisite packages (likely present)
+      apt:
+        name:
+          - dkms
+          - raspberrypi-kernel-headers
+          - wireguard-dkms
+          - wireguard-tools
+          - wireguard
+        state: present
+        force_apt_get: yes
+        cache_valid_time: 84600
+      register: wireguard_packages_present
+    - name: Remove testing branch so we don't get accidental surpises
+      apt_repository:
+        repo: deb http://raspbian.raspberrypi.org/raspbian/ testing main contrib non-free rpi
+        state: absent
+        update_cache: yes
+    - name: Check if wireguard directory exists
+      stat:
+        path: "{{ wireguard_remote_directory }}"
+      register: wg_dir
+
+    - name: create wireguard directory if not exists
+      file:
+        path: "{{ wireguard_remote_directory }}"
+        state: directory
+        owner: "root"
+        group: "root"
+        mode: 0700
+      when:
+        wg_dir.stat.exists == False
+      register: created_wg_dir
+
+  when:
+    wg_bin.stat.exists == False or force_install is defined
+  tags: wireguard_install_binary
