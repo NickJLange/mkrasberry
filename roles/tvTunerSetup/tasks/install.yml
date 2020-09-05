@@ -17,3 +17,11 @@
   tags:
     - tvtuner_packages
   register: tvtuner_packages_present
+
+
+
+#Get:1 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf libsigsegv2 armhf 2.12-2 [32.3 kB]
+#Get:2 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf m4 armhf 1.4.18-2 [185 kB]
+#Get:3 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf autoconf all 2.69-11 [341 kB]
+#Get:4 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf autotools-dev all 20180224.1 [77.0 kB]
+#Get:5 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf automake all 1:1.16.1-4 [771 kB]
