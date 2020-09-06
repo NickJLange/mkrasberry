@@ -6,6 +6,6 @@
      - role: role-install-gcloud
        become: yes
        become_user: "{{ local_ssh_user }}"
-     - role: phoneHome
+     - role: ansible-phoneHome
        become: yes
        become_user: "{{ local_ssh_user }}"
