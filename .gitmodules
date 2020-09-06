@@ -26,3 +26,7 @@
 	path = roles/role-install-gcloud
 	url = https://github.com/ansible/role-install-gcloud.git
 	branch = master
+[submodule "roles/ansible-phoneHome"]
+	path = roles/ansible-phoneHome
+	url = git@github.com:NickJLange/ansible-phoneHome.git
+	branch = master
