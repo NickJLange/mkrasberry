@@ -30,3 +30,7 @@
 	path = roles/ansible-phoneHome
 	url = git@github.com:NickJLange/ansible-phoneHome.git
 	branch = master
+[submodule "roles/wireguardClientSetup"]
+	path = roles/wireguardClientSetup
+	url = git@github.com:NickJLange/wireguardClientSetup.git
+	branch = master

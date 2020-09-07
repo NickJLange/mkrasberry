@@ -12,6 +12,8 @@
       set_fact:
         provision_wg_server: True
         provision_wg_client: False
+        add_wg_client: False
+        wireguard_interface: "{{wireguard_server_interface}}"
 
   roles:
      - role: wireguardServerSetup
