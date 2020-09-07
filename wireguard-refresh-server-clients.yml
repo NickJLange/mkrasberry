@@ -14,12 +14,13 @@
         provision_wg_client: False
         add_wg_client: False
         refresh_wg_server: True
+        wireguard_interface: "{{wireguard_server_interface}}"
 
     - name: DQ Check
       assert:
         that:
-          - wireguard_client_server_endpoint is defined
-          - wireguard_client_ip is defined
+          - wireguard_server_endpoint is defined
+          - wireguard_server_listen_ip is defined
         fail_msg: "End of days man"
 
 
