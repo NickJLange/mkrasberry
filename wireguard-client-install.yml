@@ -12,6 +12,8 @@
        set_fact:
          provision_wg_server: False
          provision_wg_client: True
+         add_wg_client: False
+         wireguard_interface: "{{wireguard_client_interface}}"
   roles:
      - role: wireguardClientSetup
 #     - role: role-install-gcloud
