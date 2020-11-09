@@ -1,0 +1,21 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  environment:
+    VAULT_USER: "{{ vault_username }}"
+    VAULT_PASSWORD: "{{ vault_password }}"
+    VAULT_AUTHTYPE: userpass
+    VAULT_ADDR: "{{ vault_address }}"
+  name: Install Datadog Agent on servers on RPI
+  roles:
+    - { role: ansible-datadog, become: yes }
+  vars:
+    datadog_api_key: "{{ my_datadog_api_key }}"
+    datadog_agent_flavor: "datadog-iot-agent"
+    datadog_config:
+      tags:
+        - env:dev
+      logs_enabled: true
+      process_config:
+        enabled: "true"

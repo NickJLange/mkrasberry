@@ -2,6 +2,8 @@
   apt:
     name:
       - msmtp
+      - msmtp-mta
+      - s-nail
       - bsd-mailx
       - ca-certificates
     state: present
@@ -19,3 +21,10 @@
     mode: '0600'
   tags:
     - msmtp_install
+
+- name: Update ALIASES
+  shell: /usr/bin/newaliases
+  register: aliases
+
+- debug:
+    msg: "Output {{ aliases }}"
