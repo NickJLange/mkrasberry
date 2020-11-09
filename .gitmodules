@@ -2,10 +2,6 @@
 	path = mkrasberry_config
 	url = git@github.com:NickJLange/mkrasberry_config.git
 	branch = master
-[submodule "roles/Stouts.hostname"]
-	path = roles/Stouts.hostname
-	url = https://github.com/Stouts/Stouts.hostname.git
-	branch = master
 [submodule "roles/ansible-docker"]
 	path = roles/ansible-docker
 	url = https://github.com/nickjj/ansible-docker.git
@@ -13,10 +9,6 @@
 [submodule "roles/ansible-locales"]
 	path = roles/ansible-locales
 	url = https://github.com/Oefenweb/ansible-locales.git
-	branch = master
-[submodule "roles/podmanSetupRaspberryPi"]
-	path = roles/podmanSetupRaspberryPi
-	url = git@github.com:NickJLange/podmanSetupRaspberryPi.git
 	branch = master
 [submodule "roles/ansible-role-pivpn"]
 	path = roles/ansible-role-pivpn
@@ -33,4 +25,39 @@
 [submodule "roles/wireguardClientSetup"]
 	path = roles/wireguardClientSetup
 	url = git@github.com:NickJLange/wireguardClientSetup.git
+	branch = master
+[submodule "roles/podmanSetupRaspberryPi"]
+	path = roles/podmanSetupRaspberryPi
+	url = git@github.com:NickJLange/podmanSetupRaspberryPi.git
+	branch = master
+[submodule "roles/Stouts.hostname"]
+	path = roles/Stouts.hostname
+	url = https://github.com/Stouts/Stouts.hostname.git
+	branch = master
+[submodule "roles/master"]
+	path = roles/master
+	url = git@github.com:NickJLange/ansible-nomad.git
+[submodule "roles/ansible-nomad"]
+	path = roles/ansible-nomad
+	url = git@github.com:NickJLange/ansible-nomad.git
+	branch = master
+[submodule "roles/DataDog.datadog"]
+	path = roles/DataDog.datadog
+	url = git@github.com:NickJLange/ansible-datadog.git
+	branch = iot_update
+[submodule "roles/homebridge.container"]
+	path = roles/homebridge.container
+	url = git@github.com:NickJLange/homebridge.container.git
+	branch = master
+[submodule "pihole.container"]
+	path = roles/pihole.container
+	url = git@github.com:NickJLange/pihole.container.git
+	branch = master
+[submodule "roles/jellyfin.container"]
+	path = roles/jellyfin.container
+	url = git@github.com:NickJLange/jellyfin.container.git
+	branch = master
+[submodule "roles/ansible-datadog"]
+	path = roles/ansible-datadog
+	url = git@github.com:NickJLange/ansible-datadog.git
 	branch = master

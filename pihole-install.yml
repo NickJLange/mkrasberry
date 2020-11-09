@@ -1,0 +1,7 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  name: Install Containerized Pihole as root
+  roles:
+    - { role: pihole.container, become: yes }
