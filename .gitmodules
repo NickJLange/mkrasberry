@@ -34,3 +34,21 @@
 	path = roles/wireguardClientSetup
 	url = git@github.com:NickJLange/wireguardClientSetup.git
 	branch = master
+[submodule "roles/ansible-datadog"]
+	path = roles/ansible-datadog
+	url = git@github.com:NickJLange/ansible-datadog.git
+[submodule "roles/homebridge.container"]
+	path = roles/homebridge.container
+	url = git@github.com:NickJLange/homebridge.container.git
+[submodule "roles/ansible-nomad"]
+	path = roles/ansible-nomad
+	url = git@github.com:NickJLange/ansible-nomad.git
+[submodule "roles/pihole.container"]
+	path = roles/pihole.container
+	url = git@github.com:NickJLange/pihole.container.git
+[submodule "roles/jellyfin.container"]
+	path = roles/jellyfin.container
+	url = git@github.com:NickJLange/jellyfin.container.git
+[submodule "roles/mosquitto.container"]
+	path = roles/mosquitto.container
+	url = git@github.com:NickJLange/mosquitto.container.git

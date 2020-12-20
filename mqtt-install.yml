@@ -1,0 +1,9 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+
+  roles:
+     - role: mosquitto.container
+       vars:
+         mosquitto_arch: "arm"
