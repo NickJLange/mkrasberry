@@ -1,0 +1,26 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+
+- block:
+  - name: "add {{ container_group }} system group"
+    group:
+        name: "{{ container_group }}"
+        state: present
+        system: true
+  - name: "add {{container_user}} service account"
+    user:
+        name: "{{ container_user }}"
+        comment: "{{ service_name }} Service Account"
+        group: "{{ container_group }}"
+        home: "{{ container_prefix }}"
+        shell: /usr/sbin/nologin
+        password_lock: true
+  become: yes
+  become_user: root
+  tags: container_add_user

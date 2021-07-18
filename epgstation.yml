@@ -1,0 +1,1 @@
+-e TZ="Asia/Tokyo" -p "8888:8888" -p "8889:8889" -v /etc/localtime:/etc/localtime:ro -v /usr/local/epgstation/config:/app/config -v /usr/local/epgstation/data:/app/data -v /usr/local/epgstation/thumbnail:/app/thumbnail -v /usr/local/epgstation/logs:/app/logs -v /d/d1/recorded:/app/recorded --restart always --name epgstation 
