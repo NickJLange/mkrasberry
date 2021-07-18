@@ -1,0 +1,20 @@
+---
+
+container_user: "nodered"
+container_group: "nodered"
+
+container_system_prefix: "/usr/local"
+container_prefix: "{{ container_system_prefix }}/nodered"
+container_conf_dir: "{{ container_prefix }}/data/"
+# May not need
+container_system_conf_dir: "{{ container_system_prefix }}/data/"
+container_env_file: "{{ container_prefix }}/envfile.conf"
+podman_path: "/usr/local/bin/podman"
+systemd_dir: "/etc/systemd/system"
+
+image_name: "nodered/node-red:latest"
+service_name: "nodered"
+container_home_url: https://nodered.org/
+#podman run --name=container  --env-file=envfile -v {{container_conf_dir}}/:/etc/container/:z -v {{container_system_dnsmasq}}:/etc/dnsmasq.d/:z --network=host container/container:latest
+## Userspace someday with new podman
+##podman run --name=pi-hole --env-file=envfile -v ./etc-container/:/etc/container/:z -v ./etc-dnsmasq.d/:/etc/dnsmasq.d/:z -p ${PIFACE}:1053:53/tcp -p ${PIFACE}:1053:53/udp -p ${PIFACE}:1067:67/tcp -p ${PIFACE}:8001:80 -p ${PIFACE}:1080:80/tcp -p ${PIFACE}:8002:443/tcp -p ${PIFACE}:1443:443/tcp --cidfile %t/container-container.ctr-id --cgroups=no-conmon nickjlange/njl-pi-hole

@@ -1,0 +1,25 @@
+---
+
+#image_name: "nodered/node-red:latest"
+service_name: "telegraf"
+service_home_url: https://github.com/influxdata/telegraf
+
+service_user: "telegraf"
+service_group: "telegraf"
+
+service_system_prefix: "/usr/local"
+service_prefix: "{{ service_system_prefix }}/{{ service_name }}"
+service_conf_dir: "{{ service_prefix }}/etc/"
+service_scripts_dir: "{{ service_prefix }}/lib/scripts"
+service_bin_dir: "{{ service_prefix }}/bin/"
+service_log_dir: "{{ service_prefix }}/var/log/"
+
+# May not need
+service_env_file: "{{ service_prefix }}/envfile.conf"
+podman_path: "/usr/local/bin/podman"
+systemd_dir: "/etc/systemd/system"
+remote_config_url: "https://europe-west1-1.gcp.cloud2.influxdata.com/api/v2/telegrafs/07b0ad501fc88000"
+influx_cloud_token: ""
+#podman run --name=service  --env-file=envfile -v {{service_conf_dir}}/:/etc/service/:z -v {{service_system_dnsmasq}}:/etc/dnsmasq.d/:z --network=host service/service:latest
+## Userspace someday with new podman
+##podman run --name=pi-hole --env-file=envfile -v ./etc-service/:/etc/service/:z -v ./etc-dnsmasq.d/:/etc/dnsmasq.d/:z -p ${PIFACE}:1053:53/tcp -p ${PIFACE}:1053:53/udp -p ${PIFACE}:1067:67/tcp -p ${PIFACE}:8001:80 -p ${PIFACE}:1080:80/tcp -p ${PIFACE}:8002:443/tcp -p ${PIFACE}:1443:443/tcp --cidfile %t/service-service.ctr-id --cgroups=no-conmon nickjlange/njl-pi-hole
