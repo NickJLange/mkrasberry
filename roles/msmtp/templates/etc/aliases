@@ -8,35 +8,35 @@
 #
 
 root: "{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
-
+{{local_ssh_user}}: "{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
 
 # Person who should get root's mail. Don't receive mail as root!
 #root:		you
 
 # Basic system aliases -- these MUST be present
-MAILER-DAEMON:	postmaster
-postmaster:	root
+MAILER-DAEMON:	"mailer-daemon+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+postmaster:	"postmaster+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
 
 # General redirections for pseudo accounts
-bin:		root
-daemon:		root
-named:		root
-nobody:		root
-uucp:		root
-www:		root
-ftp-bugs:	root
-postfix:	root
+bin:		"bin+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+daemon:		"daemon+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+named:		"named+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+nobody:		"nobody+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+uucp:		"uucp+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+www:		"www+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+ftp-bugs:	"ftp-bugs+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+postfix:	"postfix+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
 
 # Put your local aliases here.
 
 # Well-known aliases
-manager:	root
-dumper:		root
-operator:	root
-abuse:		postmaster
+manager:	"manager+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+dumper:		"dumper+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+operator:	"operator+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
+abuse:		"abuse+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
 
 # trap decode to catch security attacks
-decode:		root
+decode:		"decode+{{ msmtp_mail_remote_user }}+{{ msmtp_hostname }}+root@{{ msmtp_mail_domain }}"
 
 # ALIASES(5)                                                          ALIASES(5)
 #

@@ -5,7 +5,6 @@
   apt:
     name:
       - dnsmasq
-      - openvpn
       - hostapd
     force_apt_get: yes
   tags:
