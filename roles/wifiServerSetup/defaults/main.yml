@@ -1,1 +1,4 @@
 ---
+wifi_server_setup_channel: 149
+wifi_country_code: us
+wifi_hardware_mode: a
