@@ -1,0 +1,46 @@
+
+---
+- hosts: "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  tasks:
+    - sysctl:
+        name: net.core.default_qdisc
+        value: fq
+        state: present
+    - sysctl:
+        name: net.ipv4.tcp_congestion_control
+        value: bbr
+        state: present
+    - sysctl:
+        name:  net.core.rmem_max
+        value: "{{ MaxExpectedPathBDP }}"
+        state: present
+    - sysctl:
+        name: net.core.wmem_max
+        value: "{{ MaxExpectedPathBDP }}"
+        state: present
+    - sysctl:
+        name: net.ipv4.tcp_rmem
+        value: "4096 87380 {{ MaxExpectedPathBDP }}"
+        state: present
+    - sysctl:
+        name: net.ipv4.tcp_rmem
+        value: "4096 87380 {{ MaxExpectedPathBDP }}"
+        state: present
+    - name: Remove existing symlink
+      file:
+        path: /etc/localtime
+        state: absent
+    - name: Add symlink
+      file:
+        src: "/usr/share/zoneinfo/{{Timezone}}"
+        path: /etc/localtime
+        owner: root
+        group: root
+        state: link
+        mode: "0644"
+    - name: Add symlink
+      shell: "echo {{Timezone}} > /etc/timezone "
+
+#/usr/share/zoneinfo/America/New_York
