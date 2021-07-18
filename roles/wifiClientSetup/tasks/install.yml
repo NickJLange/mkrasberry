@@ -37,7 +37,7 @@
 
 # valid reboot works
 - name:  bounce rfkill (as it doesn't have the country code)
-  shell: rfkill unblock wifi
+    shell: rfkill unblock wifi
   when:     wpa_supplicant_updated is defined
 #    cron_file: phoneHome_sh
 
