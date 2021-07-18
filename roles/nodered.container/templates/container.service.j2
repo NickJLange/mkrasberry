@@ -1,0 +1,16 @@
+[Unit]
+Description=Runs {{ service_name }} Server
+Documentation= {{ container_home_url }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{container_user}}
+Group={{container_group}}
+ExecStart={{podman_path}} start -a {{ service_name }}
+ExecReload={{podman_path}} stop -t 2 {{ service_name }}
+KillSignal=SIGTERM
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

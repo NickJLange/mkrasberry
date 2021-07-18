@@ -1,0 +1,6 @@
+---
+- hosts: "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  roles:
+     - role: syslog.container
