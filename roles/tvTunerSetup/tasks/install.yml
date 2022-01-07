@@ -23,7 +23,22 @@
     - tvtuner_packages
   register: tvtuner_packages_present
 
+#curl -O http://plex-net.co.jp/plex/px-s1ud/PX-S1UD_driver_Ver.1.0.1.zip
+#unzip PX-S1UD_driver_Ver.1.0.1.zip
+#sudo cp PX-S1UD_driver_Ver.1.0.1/x64/amd64/isdbt_rio.inp /lib/firmware/
+#apt install pcscd pcsc-tools libpcsclite-dev
+#
 
+podman run -it -e TZ=Asia/Tokyo -p 8888:8888 -p 8889:8889 -v /etc/localtime:/etc/localtime:ro \
+-v /usr/local/epgstation/config:/app/config -v /usr/local/epgstation/data:/app/data \
+-v /usr/local/epgstation/thumbnail:/app/thumbnail -v /usr/local/epgstation/logs:/app/logs \
+-v /lib/arm-linux-gnueabihf/:/lib/arm-linux-gnueabihf -v /usr/bin/ffmpeg:/usr/bin/ffmpeg \
+-v /usr/bin/ffprobe:/usr/bin/ffprobe \
+-v /d/d1/recorded:/app/recorded --restart always --name epgstation --replace --net host l3tnun/epgstation:latest"
+#
+#"podman run -d --name=mariadb -e PUID=1000 -e PGID=1000 -e MYSQL_ROOT_PASSWORD=epgstation -e TZ=Asia/Tokyo -e MYSQL_DATABASE=epgstation -e MYSQL_USER=epgstation -e MYSQL_PASSWORD=epgstation -p 3306:3306 -v /usr/local/mirakurun/mysql/config:/config -v /usr/local/mirakurun/mysql/db/:/var/lib/mysql --restart unless-stopped linuxserver/mariadb mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --performance-schema=false --expire_logs_days=1"
+
+#"podman run -d --net host --device /dev/bus:/dev/bus --device /dev/dvb:/dev/dvb -v /usr/local/mirakurun/run/:/var/run/ -v /usr/local/mirakurun/opt/:/opt/ -v /usr/local/mirakurun/config/:/app-config/ -v /usr/local/mirakurun/data/:/app-data/ --cap-add SYS_ADMIN --cap-add SYS_NICE -e TZ=Asia/Tokyo --name mirakurun --replace chinachu/mirakurun:latest"
 
 #Get:1 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf libsigsegv2 armhf 2.12-2 [32.3 kB]
 #Get:2 http://ftp.jaist.ac.jp/pub/Linux/raspbian-archive/raspbian buster/main armhf m4 armhf 1.4.18-2 [185 kB]

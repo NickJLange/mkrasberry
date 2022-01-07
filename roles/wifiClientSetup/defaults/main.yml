@@ -1,3 +1,6 @@
 ---
 wpa_suppplicant_path: /etc/wpa_supplicant/
 wpa_supplicant_file: "{{wpa_suppplicant_path}}/wpa_supplicant.conf"
+service_user: root
+service_group: root
+service_name: wpa_supplicant

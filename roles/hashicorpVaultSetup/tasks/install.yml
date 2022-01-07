@@ -2,17 +2,6 @@
 ###############################################################################
 ################################# INSTALL #####################################
 ###############################################################################
-- name: Install requisite pip (likely present)
-  apt:
-    name:
-      - python3-pip
-      - python-setuptools
-      - python3-setuptools
-    state: present
-    force_apt_get: yes
-    cache_valid_time: 84600
-  become: yes
-  become_user: root
 
 - name: Install PreRequisites
   pip:
@@ -26,6 +15,19 @@
   register: preexisting
   tags:
     - vault
+
+- stat:
+    path: "{{ vault_data_path }}"
+  register: preexisting_data
+  tags:
+    - vault
+
+- stat:
+    path: "{{ vault_config_path }}"
+  register: preexisting_config
+  tags:
+    - vault
+
 
 # - debug: var=preexisting
 - block:
@@ -59,6 +61,7 @@
         mode: 0755
         owner: "{{vault_user}}"
         group: "{{vault_group}}"
+      when: preexisting_data.stat.exists != true
     - name: Create Config directory
       file:
         path: "{{ vault_config_path }}"
@@ -66,6 +69,7 @@
         mode: 0755
         owner: "{{vault_user}}"
         group: "{{vault_group}}"
+      when: preexisting_config.stat.exists != true
 
 
     become: true

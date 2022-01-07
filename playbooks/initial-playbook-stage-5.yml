@@ -1,0 +1,31 @@
+
+---
+- hosts: "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  tasks:
+    - name: Install requisite packages (likely present)
+      apt:
+        name:
+          - tcpdump
+          - jq
+        state: present
+        force_apt_get: yes
+        cache_valid_time: 84600
+    - name: Make sure we have a 'wheel' group
+      group:
+        name: wheel
+        state: present
+
+    - name: Add Kenta
+      user:
+        name: kenta
+        comment: Kenta
+        groups: wheel
+        shell: /bin/bash
+        password_lock: true
+    - name: Set authorized key taken from file
+      authorized_key:
+        user: kenta
+        state: present
+        key: "{{ kenta_ssh_key }}"

@@ -37,10 +37,26 @@
 
 # valid reboot works
 - name:  bounce rfkill (as it doesn't have the country code)
-    shell: rfkill unblock wifi
+  shell: rfkill unblock wifi
   when:     wpa_supplicant_updated is defined
 #    cron_file: phoneHome_sh
 
+
+#- name: configure service for systemd
+#  template:
+#    src: templates/wpa_supplicant_systemd.conf
+#    dest: /usr/lib/systemd/system/wpa_supplicant.service
+#    mode: 0600
+#    owner: "{{service_user}}"
+#    group: "{{service_group}}"
+
+#  notify: reload systemd
+
+- name: enable service
+  service:
+    name: "{{ service_name }}"
+    enabled: yes
+    state: started
 
 - name: reload the config
   shell: wpa_cli -i wlan0 reconfigure

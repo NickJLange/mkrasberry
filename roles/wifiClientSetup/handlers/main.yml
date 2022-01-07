@@ -1,0 +1,12 @@
+---
+- name: restart container
+  become: yes
+  become_user: "{{container_user}}"
+  service:
+    name: "{{ service_name }}"
+    state: restarted
+
+- name: reload systemd
+  become: yes
+  become_user: root
+  command: systemctl daemon-reload

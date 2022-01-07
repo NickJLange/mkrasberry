@@ -1,0 +1,25 @@
+---
+- hosts:  "{{ hostlist }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  roles:
+     - role: Stouts.hostname
+     - role: msmtp
+#     - role: ansible-role-pivpn
+     - role: wifiClientSetup
+  tasks:
+      - name: Delete the Raspberry PI user
+        user:
+           name: pi
+           state: absent
+           remove: yes
+      - name: Install requisite packages (likely present)
+        apt:
+          name:
+            - vim
+            - jq
+            - podman
+            - gawk
+          state: present
+          force_apt_get: yes
+          cache_valid_time: 84600
