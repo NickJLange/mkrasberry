@@ -1,6 +1,6 @@
 ---
-vault_version: "1.5.3"
-vault_checksum: "sha256:b51543ea3626322b12c593f2b3830c0b9cb7042d503df55229034cd297f98d13"
+vault_version: "1.8.1"
+vault_checksum: "sha512:c2e7b5d2935b04c8afafaea3a50f849c8816332d8a7ff462831fa138af7a30e301fa3c3ab6ae7e42793aca08a07668203891e7c567468017b56c3d1088d068d0"
 vault_install_path: /usr/local/vault/
 vault_datacenter: dc1
 vault_config_path: /usr/local/vault/etc/
