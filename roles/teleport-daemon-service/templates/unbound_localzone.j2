@@ -1,0 +1,12 @@
+server:
+    ###########################################################################
+    # LOCAL ZONE
+    ###########################################################################
+    
+    local-data: tele.{{ourdomain}} IN A {{ ansible_ssh_host }}
+    local-data-ptr: "{{ ansible_ssh_host  }} tele.{{ ourdomain }}"
+
+    local-zone: "tele.nicklange.family" redirect
+    local-data: "tele.nicklange.family. IN A 192.168.100.102"
+    local-zone: "tele.newyork.nicklange.family" redirect
+    local-data: "tele.newyork.nicklange.family. IN A 192.168.100.102"

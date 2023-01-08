@@ -1,25 +1,28 @@
 ---
-- hosts:  "{{ hostlist }}"
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
   roles:
-     - role: Stouts.hostname
-     - role: msmtp
-#     - role: ansible-role-pivpn
-     - role: wifiClientSetup
+    - role: Stouts.hostname
+    - role: msmtp
+    - role: wifiClientSetup
   tasks:
-      - name: Delete the Raspberry PI user
-        user:
-           name: pi
-           state: absent
-           remove: yes
-      - name: Install requisite packages (likely present)
-        apt:
-          name:
-            - vim
-            - jq
-            - podman
-            - gawk
-          state: present
-          force_apt_get: yes
-          cache_valid_time: 84600
+    - name: "Delete the Raspberry PI default user: {{ item }}"
+      shell:
+        "if id {{ item }} 2>/dev/null 1>/dev/null; then killall -q -u {{ item }} -9 && userdel {{ item }}; fi "
+        #FIXME: Stupid systemd
+      loop: "{{ poison_usernames }} "
+
+    - name: Install requisite packages (likely present)
+      apt:
+        name:
+          - vim
+          - jq
+          - gawk
+          - knockd
+          - libpam-cgfs
+          - cgroup-tools
+          - cgroupfs-mount
+        state: present
+        force_apt_get: yes
+        cache_valid_time: 84600

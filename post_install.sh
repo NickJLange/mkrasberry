@@ -4,6 +4,8 @@ BASE=/Volumes/boot
 
 WIFI=wpa_supplicant.conf
 
+echo "Adding default wifi..."
+
 if [ -z "$WIFISSID" ];
 	then
 	echo "SSID and PSK not defined as environmental variables. Bailing."
@@ -24,5 +26,14 @@ fi
 touch $BASE/ssh
 cp -f ./$WIFI $BASE
 
-cat $WIFI  | sed -r -e 's/ssid=".+"/ssid="'$WIFISSID'"/g' -e 's/psk=".+"/psk="'$WIFIPSK'"/g' > $BASE/$WIFI
+echo $WIFISSID
+
+cat $WIFI  | sed -r -e 's/ssid=".+"/ssid="'"$WIFISSID"'"/g' -e 's/psk=".+"/psk="'"$WIFIPSK"'"/g' > $BASE/$WIFI
+
 cat $BASE/$WIFI
+
+USERCONF="userconf"
+
+echo "Adding default user..."
+
+cp -f ./$USERCONF $BASE

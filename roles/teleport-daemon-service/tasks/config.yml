@@ -1,0 +1,38 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+
+- name: Make sure /var/lib/teleport is present
+  file: 
+    path: /var/lib/teleport
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: copy config file into place
+  copy:
+#    remote_src: yes
+    src: ./certificates/{{ ssl_private_key }}
+    dest: /var/lib/teleport/privkey.pem
+    mode: 0644
+    owner: root
+    group: root
+
+
+- name: copy config file into place
+  copy:
+#    remote_src: yes
+    src: ./certificates/{{ ssl_public_key }}
+    dest: /var/lib/teleport/public.pem
+    mode: 0644
+    owner: root
+    group: root
+
+
+

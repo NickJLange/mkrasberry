@@ -1,0 +1,25 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  pre_tasks:
+    - name: "Warm up"
+      set_fact:
+        container_user: "telegraf"
+        container_group: "telegraf"
+        # May not need
+        image_name: "docker.io/library/telegraf:latest"
+        container_friendly_name: "telegraf"
+        container_home_url: https://github.com/influxdata/telegraf
+      tags: key_vars
+  tasks:
+     - import_role:
+        name: ansible-podman-systemd-generic
+        tasks_from: "passthrough"
+     - import_role:
+        name: telegraf-container-service
+        tasks_from: "config"
+     - name: Sighup telegraf
+       shell: podman kill --signal HUP {{ container_friendly_name }}
+       become: yes
+       become_user: "{{ container_user }}"

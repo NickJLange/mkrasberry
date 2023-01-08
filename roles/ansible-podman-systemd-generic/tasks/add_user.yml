@@ -1,0 +1,31 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+- block:
+  - name: "add systemd-container-manager system group"
+    group:
+        name: "{{ container_management_group }}"
+        state: present
+        system: true
+
+  - name: "add {{ container_group }} system group"
+    group:
+        name: "{{ container_group }}"
+        state: present
+        system: true
+  - name: "add {{container_user}} service account"
+    user:
+        name: "{{ container_user }}"
+        comment: "{{ container_friendly_name }} Service Account"
+        group: "{{ container_group }}"
+        home: "{{ container_prefix }}"
+        shell: /usr/sbin/nologin
+        password_lock: true
+        groups: "{{ container_management_group }}"
+  become: yes
+  become_user: root
+  when: container_user != "root"
+  tags: container_add_user
