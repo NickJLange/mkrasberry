@@ -17,14 +17,17 @@ configure:
 	grep newbie hosts
 	grep -i ${hostlist}	hosts
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=newbie playbooks/initial-playbook-stage-1.yml || true
+	echo "Sleeping 75 Seconds for SSH to unwind"
+	sleep 75
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-2.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-3.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-4.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-5.yml
-	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-5.yml
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/syslog-configure.yml
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/datadog-install.yml
+#	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-client-install.yml
+  ANSIBLE_HOST_KEY_CHECKING=False ansible -vv -b -m reboot ${hostlist}
 	#reboot for DNS to kick in / make sure everything comes up
-  ANSIBLE_HOST_KEY_CHECKING=False 	ansible -v -b -m reboot terraDelta
-	echo ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} podman-install.yml
 
 
 

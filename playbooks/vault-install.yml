@@ -1,0 +1,24 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  pre_tasks:
+    - name: "Warm up"
+      set_fact:
+        # May not need
+        image_name: "docker.io/library/vault:latest"
+        container_friendly_name: "vault"
+        container_user: "vault"
+        container_group: "vault"
+
+        container_home_url: http://www.vaultproject.io
+      tags: key_vars
+  tasks:
+     - import_role:
+        name: ansible-podman-systemd-generic
+        tasks_from: "pre"
+     - import_role:
+        name: hashicorpVaultSetup
+     - import_role:
+        name: ansible-podman-systemd-generic
+        tasks_from: "post"

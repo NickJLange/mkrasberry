@@ -1,23 +1,46 @@
 ---
 
-- name: Check for Podman
+
+
+- set_fact:
+    podman_path: "/usr/bin/podman"
+
+
+- name: Check for podman in /usr/bin
   stat:
     path: "{{ podman_path }}"
   register: podman_ok
 
-- fail:
-    msg: "Podman not installed - do that first"
+
+
+- block:
+  - name: Check for Podman in alternate location
+    stat:
+      path: "{{ podman_local_path }}"
+    register: podman_local_ok
+  - set_fact:
+      podman_path: "{{ podman_local_path }}"
+  - fail:
+      msg: "Podman not installed - do that first"
+    when: podman_local_ok.stat.exists  != true
   when: podman_ok.stat.exists  != true
 
-- import_tasks: add_user.yml
+- name: "Check critical variables are defined."
+  assert:
+    that:
+      - container_user is defined
+      - container_group is defined
+      - container_friendly_name is defined
+      - container_prefix is defined
+      - image_name is defined
+      - container_home_url is defined
 
-  tags: [container_add_user]
 
 - import_tasks: install.yml
+  tags: [service_install_binary]
 
-  tags: [container_install_binary]
+- import_tasks: config.yml
+  tags: [service_install_config]
 
-
-
-#- import_tasks: configure_client_interface.yml
-#  tags: [wireguard_configure_client]
+- import_tasks: first_run.yml
+  tags: [service_install_binary]

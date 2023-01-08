@@ -2,10 +2,6 @@
 	path = mkrasberry_config
 	url = git@github.com:NickJLange/mkrasberry_config.git
 	branch = master
-[submodule "roles/ansible-docker"]
-	path = roles/ansible-docker
-	url = https://github.com/nickjj/ansible-docker.git
-	branch = master
 [submodule "roles/ansible-locales"]
 	path = roles/ansible-locales
 	url = https://github.com/Oefenweb/ansible-locales.git
@@ -61,3 +57,9 @@
 	path = roles/ansible-datadog
 	url = git@github.com:NickJLange/ansible-datadog.git
 	branch = master
+[submodule "vendor/ansible-datadog-callback"]
+	path = vendor/ansible-datadog-callback
+	url = https://github.com/DataDog/ansible-datadog-callback.git
+[submodule "roles/ansible-ip_defense_shield"]
+	path = roles/ansible-ip_defense_shield
+	url = git@github.com:NickJLange/ansible-ip_defense_shield.git

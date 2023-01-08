@@ -1,0 +1,55 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+- block:
+  - name: create the tld  paths
+    file:
+      path: "{{ container_prefix }}/"
+      state: directory
+      mode: 0755
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+  - name: create the conf paths
+    file:
+      path: "{{ container_conf_dir }}"
+      state: directory
+      mode: 0755
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+  - name: create the data  paths
+    file:
+      path: "{{ container_prefix }}/etc"
+      state: directory
+      mode: 0755
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+  - name: create the data  paths
+    file:
+      path: "{{ container_prefix }}/data"
+      state: directory
+      mode: 0755
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+  - name: create the log  paths
+    file:
+      path: "{{ container_prefix }}/log"
+      state: directory
+      mode: 0755
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+
+
+### Container Management Template - Should not touch if exists, otherwise install
+- stat:
+    path: "{{ container_management_polkit_path }}/{{ container_management_polkit }}"
+  register: polkit_rule
+
+- name: Add polkit rule for container management for group {{ container_management_group }}
+  template:
+    src: templates/{{ container_management_polkit }}.j2
+    dest: "{{ container_management_polkit_path }}/{{container_management_polkit}}"
+    mode: 0644
+    owner: root
+    group: root

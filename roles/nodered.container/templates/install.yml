@@ -1,0 +1,31 @@
+---
+
+
+
+
+
+#--name=mqtt  --env-file=envfile -v ./etc-mqtt/:/etc/mqtt/:z -v ./etc-dnsmasq.d/:/etc/dnsmasq.d/:z --network=host mqtt/mqtt:latest
+
+###############################################################################
+################################ CONFIGURE ####################################
+###############################################################################
+
+
+- name: Add envfile for mqtt
+  template:
+    src: mqtt.envfile.j2
+    dest: "{{mqtt_env_file}}"
+    mode: 0600
+    owner: "{{mqtt_user}}"
+    group: "{{mqtt_group}}"
+  notify: restart mqtt
+
+
+- name: Add envfile for {{container}}
+  template:
+    src: container.envfile.j2
+    dest: "{{container_env_file}}"
+    mode: 0600
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
+  notify: restart container

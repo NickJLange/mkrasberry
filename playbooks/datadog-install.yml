@@ -1,5 +1,5 @@
 ---
-- hosts:  "{{ hostlist }}"
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
   environment:
@@ -15,7 +15,9 @@
     datadog_agent_flavor: "datadog-iot-agent"
     datadog_config:
       tags:
-        - env:dev
+        - env: "{{ datadog_env }}"
+        - region: "{{ datadog_region }}"
+        - availability_zone: "{{ datadog_availability_zone }}"
       logs_enabled: true
       process_config:
         enabled: "true"

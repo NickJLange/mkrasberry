@@ -1,6 +1,24 @@
 ---
-- hosts: "{{ hostlist }}"
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
-  roles:
-     - role: nodered.container
+  pre_tasks:
+    - name: "Warm up"
+      set_fact:
+        # May not need
+        image_name: "docker.io/nodered/node-red:latest"
+        container_friendly_name: "nodered"
+        container_user: "nodered"
+        container_group: "nodered"
+
+        container_home_url: https://nodered.org/
+      tags: key_vars
+  tasks:
+     - import_role:
+        name: ansible-podman-systemd-generic
+        tasks_from: "pre"
+     - import_role:
+        name: nodered.container
+     - import_role:
+        name: ansible-podman-systemd-generic
+        tasks_from: "post"

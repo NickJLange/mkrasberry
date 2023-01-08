@@ -1,0 +1,10 @@
+---
+
+- name: "Template a file to {{ sudoers_path }}/{{ sudoers_entry_filename }} "
+  template:
+    src: "{{ sudoers_path }}/{{ sudoers_entry_filename }}"
+    dest: "/{{ sudoers_path }}/{{ sudoers_entry_filename }}"
+    owner: root
+    group: root
+    mode: '0400'
+

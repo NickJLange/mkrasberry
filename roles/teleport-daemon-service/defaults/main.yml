@@ -1,0 +1,11 @@
+---
+
+#image_name: "nodered/node-red:latest"
+
+version: '9.3.4'
+
+base_url: https://get.gravitational.com
+binary: "teleport-v{{ version }}-linux-arm64-bin.tar.gz"
+binary_download_url: "{{base_url}}/{{binary}}"
+
+binary_install: "/usr/local/bin/"

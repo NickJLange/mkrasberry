@@ -1,0 +1,3 @@
+---
+sudoers_path: etc/sudoers.d/
+sudoers_entry_filename: "01_fix_fqdn"

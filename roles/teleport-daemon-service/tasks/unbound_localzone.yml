@@ -1,0 +1,17 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+- name: Add config for unbound
+  template:
+    src: unbound_localzone.j2
+    dest: /etc/unbound/unbound.conf.d/localzone-{{dnsgroup}}.conf
+    mode: 0600
+    owner: root
+    group: root
+  notify: restart unbound
+
+
+
+### FIXME: sudo systemctl disable unbound-resolvconf.service

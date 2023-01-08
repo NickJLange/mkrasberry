@@ -1,0 +1,23 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+
+- name: Add default config
+  template:
+    src: vault.config.j2
+    dest: "{{container_prefix}}/etc/vault.config"
+    mode: 0600
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
+
+
+#  - name: register vault with consul
+#    template:
+#      src: vault-consul.json.j2
+#      dest: /etc/consul/vault-consul.json
+#      mode: 0644

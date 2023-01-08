@@ -1,0 +1,16 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+
+  - name: First run of image (no idea if I can )
+    shell: "{{podman_path}} run -d --replace=true --name=vault --cap-add=IPC_LOCK --env-file={{ container_env_file }} \
+    --net=host -v {{ container_prefix }}/etc/vault.config:/vault/config/vault.config -v {{ container_prefix }}/log:/vault/logs -v {{ container_prefix }}/data:/vault/file {{ image_name }} server"
+    args:
+      executable: /bin/bash
+    register: pull_ok
+    become_user: "{{ container_user }}"

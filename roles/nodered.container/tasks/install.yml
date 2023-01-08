@@ -1,112 +1,16 @@
----
-###############################################################################
-################################# INSTALL #####################################
-###############################################################################
-
-- stat:
-    path: "{{ container_prefix }}"
-  register: installed_ok
-  tags:
-    - container_systemd
-
-- block:
-  - name: create the tld  paths
-    file:
-      path: "{{ container_prefix }}/"
-      state: directory
-      mode: 0755
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-  - name: create the conf paths
-    file:
-      path: "{{ container_conf_dir }}"
-      state: directory
-      mode: 0755
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-  - name: create the data  paths
-    file:
-      path: "{{ container_prefix }}/data"
-      state: directory
-      mode: 0755
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-  - name: create the log  paths
-    file:
-      path: "{{ container_prefix }}/log"
-      state: directory
-      mode: 0755
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-
-  when: installed_ok.stat.exists == true
-
 
 ###############################################################################
 ################################ Initial Pull ####################################
 ###############################################################################
 
 
-- name: Pull latest container image
-  shell: "{{podman_path}} pull {{ image_name }}"
-  args:
-    executable: /bin/bash
-  register: pull_ok
-  become_user: "{{container_user}}"
-  become: true
-- debug:
-   msg: "{{pull_ok}}"
 
 
-#--name=container  --env-file=envfile -v ./etc-container/:/etc/container/:z -v ./etc-dnsmasq.d/:/etc/dnsmasq.d/:z --network=host container/container:latest
 
-###############################################################################
-################################ CONFIGURE ####################################
-###############################################################################
-
-- block:
-
-  - name: Add envfile for {{container}}
-    template:
-      src: container.envfile.j2
-      dest: "{{container_env_file}}"
-      mode: 0600
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-    notify: restart container
-
-  - name: Add default config
-    template:
-      src: settings.js.j2
-      dest: "{{container_conf_dir}}/settings.js"
-      mode: 0600
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-
-  - name: First run of image (no idea if I can )
-    shell: "{{podman_path}} run -d --replace=true -v {{container_prefix}}/data:/data --name={{ service_name }} --env-file={{ container_env_file }} \
-     --net=host --replace --restart unless-stopped {{ image_name }}"
-    args:
-      executable: /bin/bash
-    register: pull_ok
-    become_user: "{{ container_user }}"
-
-  - name: configure container for systemd
-    template:
-      src: container.service.j2
-      dest: "{{ systemd_dir }}/{{service_name}}.service"
-      mode: 0600
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-
-    notify: reload systemd
-
-  - name: enable container
-    service:
-      name: "{{ service_name }}"
-      enabled: yes
-      state: started
-
-  become: yes
-  become_user: "root"
-  tags: container_systemd
+- name: Add envfile for {{container}}
+  template:
+    src: container.envfile.j2
+    dest: "{{container_env_file}}"
+    mode: 0600
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
