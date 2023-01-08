@@ -1,0 +1,24 @@
+---
+
+dependencies: []
+
+galaxy_info:
+  author: Nick Lange
+  company: Private
+  description: Fix sudoers entries to disable FQDN on Debian
+  license: MIT
+  platforms:
+  - name: Ubuntu
+    versions:
+    - all
+  - name: Debian
+    versions:
+    - all
+  - name: RedHat
+    versions:
+    - all
+  - name: CentOS
+    versions:
+    - all
+  categories:
+  - system

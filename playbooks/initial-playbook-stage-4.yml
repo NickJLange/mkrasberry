@@ -1,6 +1,6 @@
 
 ---
-- hosts: "{{ hostlist }}"
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
   tasks:

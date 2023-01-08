@@ -1,11 +1,14 @@
 ---
-- hosts:  "{{ hostlist }}"
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
   roles:
-     - role: role-install-gcloud
-       become: yes
-       become_user: "{{ local_ssh_user }}"
-     - role: ansible-phoneHome
-       become: yes
-       become_user: "{{ local_ssh_user }}"
+    - role: role-install-gcloud
+      become: yes
+      become_user: "{{ local_ssh_user }}"
+    - role: ansible-phoneHome
+      become: yes
+      become_user: "{{ local_ssh_user }}"
+      when: phoneHomePort is defined
+    - role: syslog-configure-servers
+      become: yes

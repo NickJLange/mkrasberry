@@ -1,0 +1,34 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+- name: First run of image (no idea if I can )
+  shell: "{{podman_path}} run -d --replace=true --name={{ container_friendly_name }} --env-file={{ container_env_file }} \
+   --net=host \
+   --device=/dev/vchiq \
+   --annotation run.oci.keep_original_groups=1 \
+   -u {{ container_user }}:{{ container_group }} \
+   -v /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro \
+   -v /lib/aarch64-linux-gnu/libvchiq_arm.so.0:/lib/aarch64-linux-gnu/libvchiq_arm.so.0:ro \
+   -v /lib/aarch64-linux-gnu/libvcos.so.0:/lib/aarch64-linux-gnu/libvcos.so.0:ro \
+   -v /:/hostfs:ro \
+   -v {{ container_prefix }}/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+   -v {{ container_prefix }}/etc/telegraf.d:/etc/telegraf/telegraf.d:ro \
+   {{ image_name }} --config-directory /etc/telegraf/telegraf.d/"
+  args:
+    executable: /bin/bash
+  register: podman_run_ok
+  become_user: "{{ container_user }}"
+
+
+## systemd will start it properly
+- name: First run of image (no idea if I can )
+  shell: "{{podman_path}} stop {{ container_friendly_name }}"
+  args:
+    executable: /bin/bash
+  register: pull_ok
+  become_user: "{{ container_user }}"

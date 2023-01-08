@@ -1,0 +1,42 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+- set_fact:
+    teleport_download_path: "/tmp/{{binary}}"
+
+
+- stat:
+    path: "{{ teleport_download_path }}"
+  register: teleport_download_ok
+
+
+
+## update with video permissions
+- name: "Download latest binary for version Teleport {{ version }}"
+  get_url: 
+    url: "{{binary_download_url}}"
+    dest: "/tmp/{{binary}}"
+    mode: '0640'
+  when: teleport_download_ok.stat.exists  != true or teleport_download_force is defined
+
+- name: "Unpack binaries"
+  shell: 
+  args:
+   cmd: "tar zxvf /tmp/{{binary}}"
+   chdir: /tmp
+
+- name: "Copy Binaries into place"
+  copy:
+    remote_src: yes
+    src: "/tmp/teleport/{{ item }}"
+    dest: "{{ binary_install }}/{{ item }}"
+    mode: '0755'
+    owner: root
+    group: root
+  loop: 
+    - teleport 
+    - tctl 
+    - tsh 
+    - tbot

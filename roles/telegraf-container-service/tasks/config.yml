@@ -1,0 +1,27 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+
+- name: copy config file into place
+  template:
+    src: templates/etc/telegraf/telegraf.conf.j2
+    dest: "{{ container_prefix }}/etc/telegraf.conf"
+    mode: 0644
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
+
+
+
+- name: copy iot config file into place
+  template:
+    src: templates/etc/telegraf/telegraf.d/mqtt_to_telegraf.conf.j2
+    dest: "{{ container_prefix }}/etc/telegraf.d/mqtt_to_telegraf.conf"
+    mode: 0644
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
+  when: "telegraf_metrics_iot is defined"

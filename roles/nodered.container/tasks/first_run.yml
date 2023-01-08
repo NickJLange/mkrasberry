@@ -1,0 +1,16 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+  
+  - name: First run of image (no idea if I can )
+    shell: "{{podman_path}} run -d --replace=true -v {{container_prefix}}/data:/data --name={{ service_name }} --env-file={{ container_env_file }} \
+     --net=host --replace --restart unless-stopped {{ image_name }}"
+    args:
+      executable: /bin/bash
+    register: pull_ok
+    become_user: "{{ container_user }}"

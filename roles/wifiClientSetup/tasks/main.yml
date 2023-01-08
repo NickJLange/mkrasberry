@@ -1,4 +1,11 @@
 ---
 
+- name: Check if wpa supplicant path  exists
+  stat:
+    path: "{{wpa_suppplicant_path}}"
+  register: wpaPath
+
 - import_tasks: install.yml
   tags: [tvtuner_install]
+  when:
+    wpaPath.stat.exists
