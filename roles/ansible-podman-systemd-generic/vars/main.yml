@@ -1,0 +1,11 @@
+---
+container_system_prefix: "/usr/local"
+container_conf_dir: "{{ container_prefix }}/data/"
+# May not need
+container_system_conf_dir: "{{ container_system_prefix }}/data/"
+container_env_file: "{{ container_prefix }}/envfile.conf"
+container_prefix: "{{ container_system_prefix }}/{{ container_friendly_name }}"
+
+container_timeout: "10"
+container_restart_policy: "on-failure"
+systemd_scope: "system"

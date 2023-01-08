@@ -1,0 +1,15 @@
+---
+
+###############################################################################
+################################ Initial Pull ####################################
+###############################################################################
+
+- name: Pull latest container image
+  shell: "{{podman_path}} pull {{ image_name }}"
+  args:
+    executable: /bin/bash
+  register: pull_ok
+  become_user: "{{container_user}}"
+  become: true
+- debug:
+   msg: "{{pull_ok}}"

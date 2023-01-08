@@ -1,0 +1,108 @@
+---
+
+
+#--name=container  --env-file=envfile -v ./etc-container/:/etc/container/:z -v ./etc-dnsmasq.d/:/etc/dnsmasq.d/:z --network=host container/container:latest
+
+###############################################################################
+############# Make systemd unit file location for non-root ####################
+###############################################################################
+
+- block:
+  - name: create tld
+    file:
+      path: "/{{ container_prefix }}/.config"
+      mode: 0711
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+      state: directory
+  - name: create tld
+    file:
+      path: "/{{ container_prefix }}/.config/systemd"
+      mode: 0711
+      state: directory
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+  - name: create tld
+    file:
+      path: "/{{ container_prefix }}/.config/systemd/user"
+      mode: 0711
+      owner: "{{container_user}}"
+      group: "{{container_group}}"
+      state: directory
+  - set_fact:
+      systemd_path:  "/{{ container_prefix }}/.config/systemd/user"
+      systemd_scope: "user"
+  when: container_user != "root"
+
+
+
+###############################################################################
+################################ CONFIGURE ####################################
+###############################################################################
+
+
+- name: "generate systemd template for {{ container_friendly_name}}"
+  shell: " {{ podman_path }} generate systemd  --container-prefix {{ systemd_prefix }} -f -n -t {{ container_timeout }} --restart-policy {{ container_restart_policy }} {{ container_friendly_name }}"
+  args:
+    executable: /bin/bash
+    chdir: /tmp
+  register: systemd_file
+  become_user: "{{ container_user }}"
+  tags: container_systemd_start
+
+- name: move generated file
+  command: "mv -f /tmp/{{systemd_prefix}}-{{container_friendly_name}}.service {{ systemd_path }}/"
+  tags: container_systemd_start
+
+- name: snag the userid
+  shell: "id -u {{ container_user }}"
+  register: container_user_pid
+  tags: container_systemd_start
+
+- debug:
+    msg: "{{container_user_pid}}"
+  tags: container_systemd_start
+
+- block:
+  - name: start local systemd for user as ansible module broken
+    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} loginctl enable-linger {{ container_user }}"
+    become: yes
+    args:
+      executable: /bin/bash
+
+  - name: daemon-reload as ansible module broken
+    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user daemon-reload"
+    become_user: "{{ container_user }}"
+    args:
+      executable: /bin/bash
+
+  - name: enable the service
+    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user enable {{systemd_prefix}}-{{container_friendly_name}}"
+    args:
+      executable: /bin/bash
+
+  - name: start the service
+    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user start {{systemd_prefix}}-{{container_friendly_name}}"
+    args:
+      executable: /bin/bash
+
+  become: yes
+#  become_method: machinectl
+  become_user: "{{ container_user }}"
+  tags: container_systemd_start
+  when: container_user != "root"
+
+- block:
+
+  - name: systemd enable container
+    systemd:
+      daemon_reload: yes
+      enabled: yes
+      name: "{{systemd_prefix}}-{{container_friendly_name}}"
+      state: started
+      scope: "{{ systemd_scope }}"
+
+  become: yes
+  become_user: "{{ container_user }}"
+  tags: container_systemd_start
+  when: container_user == "root"

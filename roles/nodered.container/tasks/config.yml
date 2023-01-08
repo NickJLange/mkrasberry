@@ -1,0 +1,16 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+
+# - debug: var=preexisting
+
+
+- name: Add default config
+  template:
+    src: settings.js.j2
+    dest: "{{container_conf_dir}}/settings.js"
+    mode: 0600
+    owner: "{{container_user}}"
+    group: "{{container_group}}"

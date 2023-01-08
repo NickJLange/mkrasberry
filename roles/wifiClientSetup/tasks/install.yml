@@ -16,7 +16,7 @@
     group: "root"
     remote_src: yes
   when:
-    wpaFile.stat.exists == True
+    wpaFile.stat.exists 
 
 - name: Install wpa supplicant file into place
   template:

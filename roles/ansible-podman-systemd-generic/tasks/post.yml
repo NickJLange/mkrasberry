@@ -1,0 +1,19 @@
+---
+
+- name: DQ Check
+  assert:
+    that:
+      - container_user is defined
+      - container_group is defined
+      - container_friendly_name is defined
+      - container_prefix is defined
+
+- import_tasks: systemd.yml
+  become: yes
+  become_user: "{{ container_user }}"
+  tags: [container_systemd]
+
+
+
+#- import_tasks: configure_client_interface.yml
+#  tags: [wireguard_configure_client]

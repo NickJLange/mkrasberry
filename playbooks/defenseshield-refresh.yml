@@ -1,0 +1,18 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  name: Install IP Defense Shield
+  pre_tasks:
+    - name: "Warm up Vars"
+      set_fact:
+        # May not need
+        container_home_url: https://github.com/NickJLange/ansible-ip_defense_shield
+        container_user: "ipds"
+        container_group: "ipds"
+        base_url: "{{ defense_shield_base_url }}"
+      tags: key_vars
+  tasks:
+    - import_role:
+        name: "ansible-ip_defense_shield"
+        tasks_from: "install.yml"

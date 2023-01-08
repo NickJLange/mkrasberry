@@ -1,0 +1,37 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+## update with video permissions
+- name: "update {{container_user}} service account to video device"
+  user:
+      name: "{{ container_user }}"
+      groups: "video"
+      append: yes
+
+## Create any telegraf specific paths
+
+
+- name: create the telegraf extra config paths
+  file:
+    path: "{{ container_prefix }}/etc/telegraf.d"
+    state: directory
+    mode: 0755
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
+
+
+
+###############################################################################
+################################ CONFIGURE ####################################
+###############################################################################
+
+
+- name: Add envfile for {{container_friendly_name}}
+  template:
+    src: envfile.j2
+    dest: "{{container_env_file}}"
+    mode: 0644
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
