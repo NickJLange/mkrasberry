@@ -1,0 +1,76 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  name: Install Datadog Agent on servers on RPI
+  vars:
+    datadog_api_key: "{{ my_datadog_api_key }}"
+    datadog_agent_flavor: "datadog-iot-agent"
+    datadog_config:
+      tags:
+        - env: "{{ datadog_env }}"
+        - region: "{{ datadog_region }}"
+        - availability_zone: "{{ datadog_availability_zone }}"
+      logs_enabled: true
+      log_level: WARN
+      process_config:
+        enabled: "true"
+  tasks:
+    #- name: Copy the datadog disk config.
+    #  copy:
+    #    remote_src: true
+    #    src: /etc/datadog-agent/conf.d/disk.d/conf.yaml.default
+    #    dest: /etc/datadog-agent/conf.d/disk.d/disk.yaml
+    #    owner: dd-agent
+    #    group: dd-agent
+    #    mode: 0644
+    #    - name: Change the regexp 1
+    #      lineinfile:
+    #        dest: /etc/datadog-agent/conf.d/disk.d/disk.yaml
+    #        regexp: "^  - use_mount: false$"
+    #        line: "  - use_mount: true"
+    #        state: present
+    #    - name: Change the regexp 2
+    #      lineinfile:
+    #        dest: /etc/datadog-agent/conf.d/disk.d/disk.yaml
+    #        regexp: "^.+excluded_mountpoint_re.+"
+    #        line: "    excluded_mountpoint_re:  /var/lib/containers/.+"
+    #        state: present
+    #    - name: Fix Disk
+    #      template:
+    #        src: disk.yaml
+    #        dest: /etc/datadog-agent/conf.d/disk.d/conf.yaml
+    #        mode: 0600
+    #        owner: dd-agent
+    #        group: dd-agent
+    #    - name: Fix Permissions
+    #      file:
+    #        path: /var/lib/containers/storage/libpod/bolt_state.db
+    #        mode: 0660
+    #        owner: root
+    #        group: dd-agent
+    #        state: file
+    - name: Change the log level
+      lineinfile:
+        dest: /etc/datadog-agent/datadog.yaml
+        regexp: "^.+availability_zone: .+"
+        line: ""
+        state: present
+    - name: Change the log level
+      lineinfile:
+        dest: /etc/datadog-agent/datadog.yaml
+        regexp: ".+env: *(.+)"
+        line: '- "env:\g<1>"'
+        state: present
+        backrefs: yes
+    - name: Change the log level
+      lineinfile:
+        dest: /etc/datadog-agent/datadog.yaml
+        regexp: ".+region: *(.+)"
+        line: '- "region:\g<1>"'
+        state: present
+        backrefs: yes
+    - name: restart agents
+      service:
+        name: datadog-agent
+        state: restarted
