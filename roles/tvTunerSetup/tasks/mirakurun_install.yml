@@ -1,0 +1,25 @@
+---
+###############################################################################
+################################ Initial Pull ####################################
+###############################################################################
+
+- name: "Add envfile for {{ container }}"
+  template:
+    src: "{{ container_env_src_file }}"
+    dest: "{{ container_env_file }}"
+    mode: 0600
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+
+- name: "Add envfile for {{ container }}"
+  file:
+    path: "{{ container_system_prefix }}/mirakurun/{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  loop:
+    - run
+    - opt
+    - data
+    - config
