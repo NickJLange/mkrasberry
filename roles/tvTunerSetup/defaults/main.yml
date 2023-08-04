@@ -1,1 +1,8 @@
 ---
+Timezone: "America/New_York"
+
+containerEnvSrcFile: "container.envfile.j2"
+role_base: "../roles/tvTunerSetup/tasks/"
+install_task: "{{ role_base }}/install.yml"
+config_task: "{{ role_base }}/config.yml"
+first_run_task: "{{ role_base }}/first_run.yml"

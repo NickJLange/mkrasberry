@@ -1,0 +1,44 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+# - debug: var=preexisting
+
+## FIXME drop privs
+## FIXME export log path
+- name: First run of image (no idea if I can )
+  shell:
+    "{{podman_path}} run -d --replace=true --hostname `hostname`-{{container_user}} --name={{container_friendly_name}}
+    --restart=unless-stopped --env-file={{container_env_file}}
+    -p 3306:3306/tcp
+    -v {{container_prefix}}/run/:/run/mysqld/:z
+    -v {{container_prefix}}/data/:/var/lib/mysql:z  {{ image_name }}
+    --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --performance-schema=false --expire_logs_days=1"
+  args:
+    executable: /bin/bash
+  register: pull_ok
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman
+
+- name: Sleep for 3 seconds to let it get past boot, then kill it
+  pause:
+    seconds: 5
+
+- name: Stop the container pending podman
+  shell: "{{podman_path}} stop {{container_friendly_name}}"
+  args:
+    executable: /bin/bash
+  register: stop_ok
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman
+
+- name: Wait for port to be available, to confirm down.
+  ansible.builtin.wait_for:
+    port: 3306
+    state: stopped
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman
