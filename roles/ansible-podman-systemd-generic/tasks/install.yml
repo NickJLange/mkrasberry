@@ -18,27 +18,18 @@
       mode: 0755
       owner: "{{container_user}}"
       group: "{{container_group}}"
-  - name: create the data  paths
+  - name: create runtime / basic data paths
     file:
-      path: "{{ container_prefix }}/etc"
+      path: "{{ container_prefix }}/{{ item }}"
       state: directory
       mode: 0755
       owner: "{{container_user}}"
       group: "{{container_group}}"
-  - name: create the data  paths
-    file:
-      path: "{{ container_prefix }}/data"
-      state: directory
-      mode: 0755
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-  - name: create the log  paths
-    file:
-      path: "{{ container_prefix }}/log"
-      state: directory
-      mode: 0755
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
+    loop:
+      - etc
+      - data
+      - log 
+      - run
 
 
 ### Container Management Template - Should not touch if exists, otherwise install
