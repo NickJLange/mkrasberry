@@ -8,3 +8,11 @@ container_system_conf_dir: "{{ container_system_prefix }}/data/"
 container_management_group: "systemd_container_manager"
 container_management_polkit: "service-auth.pkla"
 container_management_polkit_path: "/etc/polkit-1/localauthority/50-local.d"
+
+container_system_prefix: "/usr/local"
+container_conf_dir: "{{ container_prefix }}/data/"
+
+
+container_timeout: "10"
+container_restart_policy: "on-failure"
+systemd_scope: "system"

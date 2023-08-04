@@ -25,7 +25,18 @@
         shell: /usr/sbin/nologin
         password_lock: true
         groups: "{{ container_management_group }}"
-  become: yes
+  - name: snag the userid
+    shell: "id -u {{ container_user }}"
+    register: container_user_pid
+    tags: container_systemd_start
+  - debug:
+      msg: "{{container_user}} uid is {{container_user_pid.stdout}}"
+    tags: container_systemd_start
+  - name: enable linger
+    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} loginctl enable-linger {{ container_user }}"
+    args:
+      executable: /bin/bash
+  become: true
   become_user: root
   when: container_user != "root"
   tags: container_add_user
