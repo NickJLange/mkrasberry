@@ -1,0 +1,24 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  environment:
+    VAULT_USER: "{{ vault_username }}"
+    VAULT_PASSWORD: "{{ vault_password }}"
+    VAULT_AUTHTYPE: userpass
+
+
+    
+    VAULT_ADDR: "{{ vault_address }}"
+  pre_tasks:
+    - name: "Playbook Constants"
+      set_fact:
+        provision_wg_server: False
+        provision_wg_client: True
+        add_wg_client: False
+        wireguard_interface: "{{ wireguard_client_interface }}"
+  tasks:
+    - name: "Install Wireguard"
+      import_role:
+        name: wireguardClientSetup
+        tasks_from: "install"

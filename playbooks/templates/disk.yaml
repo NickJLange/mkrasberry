@@ -1,0 +1,3 @@
+instances:
+-   use_mount: true
+    excluded_mountpoint_re: /var/lib/container.+

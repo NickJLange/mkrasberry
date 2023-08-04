@@ -1,6 +1,6 @@
 
 HII=1
-
+BASE=/Volumes/bootfs
 OSIMAGE=images/2021-10-30-raspios-bullseye-arm64-lite.img
 
 install_os:
@@ -9,7 +9,7 @@ install_os:
 	diskutil list
 
 post:
-	if [ -d /Volumes/boot ]; then \
+	if [ -d ${BASE} ]; then \
 		  ./post_install.sh;\
 		fi
 
