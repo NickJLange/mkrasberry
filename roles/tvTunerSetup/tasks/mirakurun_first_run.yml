@@ -1,0 +1,44 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+# - debug: var=preexisting
+
+## FIXME drop privs
+## FIXME export log path
+- name: First run of image (no idea if I can )
+  shell:
+    "{{podman_path}} run -d --replace=true --hostname `hostname`-{{ container_user }}
+    -p 40772:40772/tcp -p 9229:9229/tcp --name={{ container_friendly_name }}  --restart=unless-stopped
+    --cap-add=CAP_SYS_ADMIN,CAP_SYS_NICE --env-file={{container_env_file}}
+    --device=/dev/dvb:/dev/dvb --device=/dev/bus:/dev/bus
+    -v {{container_prefix}}/run/:/var/run/:z -v {{container_prefix}}/opt/:/opt/:z
+    -v {{container_prefix}}/config/:/config/:z -v {{container_prefix}}/data/:/data/:z
+    {{ image_name }}"
+  args:
+    executable: /bin/bash
+  register: pull_ok
+  become: true
+  become_user: "{{container_user}}"
+  tags: mirakurun
+
+- name: Sleep for 3 seconds to let it get past boot, then kill it
+  pause:
+    seconds: 5
+
+- name: "Stop Container pending systemd"
+  shell: "{{ podman_path }} stop {{ container_friendly_name }}"
+  args:
+    executable: /bin/bash
+  register: stop_ok
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman
+
+- name: "Wait for port to be available, to confirm down."
+  wait_for:
+    port: 40772
+    state: stopped
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman

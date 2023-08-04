@@ -5,7 +5,7 @@ dependencies: []
 galaxy_info:
   author: Nick Lange
   company: Private
-  description: Configures Raspberry PI wifi
+  description: Configures Raspberry PI TV Tuner
   license: MIT
   platforms:
   - name: Debian
