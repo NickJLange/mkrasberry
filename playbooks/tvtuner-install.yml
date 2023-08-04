@@ -1,0 +1,147 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  name: Install Containerized TV Tuner Software
+  # Block 1 /2 /3 /4 - incl. directory setup and automount
+  pre_tasks:
+    - name: "Variables"
+      set_fact:
+        # May not need
+        recording_path: "/d/d1"
+        app_path_base: "/usr/local/tvtuner/"
+    - name: "Variables2"
+      set_fact:
+        mirakurun_path: "{{ app_path_base }}/mirakurun"
+        mariadb_path: "{{ app_path_base }}/mysql"
+        epgstation_path: "{{ app_path_base }}/epgstation"
+
+  tasks:
+    - block:
+        - name: Ensure group "somegroup" exists
+          group:
+            name: tvtuner
+            state: present
+        - name: "Generate Data Directories"
+          file:
+            path: "{{ app_path_base }}"
+            state: directory
+            owner: root
+            mode: 0755
+        - name: "Generate Recording Mount"
+          file:
+            path: "/d/d1/"
+            state: directory
+            owner: root
+            mode: 0755
+        - name: "Generate Recording Mount"
+          file:
+            path: "/d/d1/recorded"
+            state: directory
+            owner: njl
+            group: tvtuner
+            mode: 0775
+        - name: Mount External Drive
+          mount:
+            path: "/d/d1/recorded"
+            src: /dev/sda
+            fstype: ext4
+            state: mounted
+        - name: Install Firmware
+          copy:
+            dest: "/lib/firmware/isdbt_rio.inp"
+            src: "isdbt_rio.inp"
+            owner: root
+            group: root
+            mode: 0644
+      become: true
+
+    - name: "MariaDB"
+      block:
+        - name: "Warm up"
+          set_fact:
+            # May not need
+            image_name: "docker.io/mariadb:latest"
+            container_friendly_name: "mariadb"
+            container_user: "mariadb"
+            container_group: "mariadb"
+            container_env_src_file: "mariadb.container.envfile.j2"
+            container_system_prefix: "{{ mariadb_path }}"
+            container_home_url: https://hub.docker.com/_/mariadb
+            #            install_task: "mariadb_install.yml"
+            first_run_task: "{{ role_base }}/mariadb_first_run.yml"
+          tags: key_vars
+        - name: "Podman Generic Pre"
+          import_role:
+            name: ansible-podman-systemd-generic
+            tasks_from: "pre"
+        - name: "TV Tuner"
+          import_role:
+            name: tvTunerSetup
+        - name: "Podman Generic Post"
+          import_role:
+            name: ansible-podman-systemd-generic
+            tasks_from: "post"
+
+    - name: "Mirakurun"
+      block:
+        - name: "warm_up"
+          set_fact:
+            # May not need
+            image_name: "docker.io/chinachu/mirakurun:latest"
+            container_friendly_name: "mirakurun"
+            container_user: "root"
+            container_group: "root"
+            container_env_src_file: "mirakurun.container.envfile.j2"
+            container_system_prefix: "{{ app_path_base }}"
+            container_home_url: https://github.com/Chinachu/Mirakurun/
+            install_task: "{{ role_base }}/mirakurun_install.yml"
+            first_run_task: "{{ role_base }}/mirakurun_first_run.yml"
+          tags: key_vars
+        - name: "Podman Generic Pre"
+          import_role:
+            name: ansible-podman-systemd-generic
+            tasks_from: "pre"
+        - name: "TV Tuner"
+          import_role:
+            name: tvTunerSetup
+        - name: "Podman Generic Post"
+          import_role:
+            name: ansible-podman-systemd-generic
+            tasks_from: "post"
+    ## FIXME - Chicken/Egg issue due to directory mount
+    - name: "Add the user 'epgstation' with a bash shell, appending the group 'tvtuner'"
+      ansible.builtin.user:
+        name: "{{ item }}"
+        groups: tvtuner
+        append: yes
+      loop:
+        - epgstation
+    - name: "epgstation"
+      block:
+        - name: "Warm up"
+          set_fact:
+            # May not need
+            image_name: "docker.io/l3tnun/epgstation:latest"
+            container_friendly_name: "epgstation"
+            container_user: "epgstation"
+            container_group: "epgstation"
+            container_env_src_file: "epgstation.container.envfile.j2"
+            container_system_prefix: "{{ app_path_base }}"
+            container_home_url: https://hub.docker.com/r/l3tnun/epgstation
+            first_run_task: "{{ role_base }}/epgstation_first_run.yml"
+          tags: key_vars
+        - name: "Podman Generic Pre"
+          import_role:
+            name: ansible-podman-systemd-generic
+            tasks_from: "pre"
+        - name: "TV Tuner"
+          import_role:
+            name: tvTunerSetup
+        - name: "Podman Generic Post"
+          import_role:
+            name: ansible-podman-systemd-generic
+            tasks_from: "post"
+    - name: "Final Warning - Make sure to reboot if first install of firmware, then scan channels"
+      pause:
+        seconds: 30

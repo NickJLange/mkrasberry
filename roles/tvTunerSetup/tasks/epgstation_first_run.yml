@@ -1,0 +1,101 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+- name: Install ffmpeg > 4.3
+  apt:
+    name:
+      - ffmpeg
+    state: present
+    force_apt_get: yes
+    update_cache: yes
+    cache_valid_time: 2592000
+  tags:
+    - tvtuner_packages
+  register: tvtuner_packages_present
+
+# - debug: var=preexisting
+### FIXME ###
+- name: Add default directories for {{ container }}
+  file:
+    path: "{{ container_system_prefix }}/epgstation/{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  loop:
+    - thumbnail
+    - logs
+    - config
+    - data
+### anoying bug in 2.7.0 series
+- name: Add default directories for {{ container }}
+  file:
+    path: "{{ container_system_prefix }}/epgstation/data/{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  loop:
+    - upload
+
+- name: Add config data for {{ container }}
+  copy:
+    src: "{{ item }}"
+    dest: "{{ container_system_prefix }}/epgstation/config/{{ item | basename }}"
+    mode: 0666
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  with_fileglob: "epgstation/config/*"
+
+- name: Add configfile for {{ container }}
+  template:
+    src: "{{ item }}"
+    dest: "{{ container_system_prefix }}/epgstation/config/{{ item | basename }}"
+    mode: 0666
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  loop:
+    - "epgstation.config.yml"
+
+## FIXME drop privs
+## FIXME export log path
+- name: "First run of image (no idea if I can )"
+  shell:
+    "{{podman_path}} run -d --replace=true --hostname `hostname`-{{container_friendly_name}} --name={{container_friendly_name}}
+    --restart=unless-stopped --env-file={{container_env_file}}
+    -p 8888:8888/tcp -p 8889:8889/tcp
+    -v {{container_prefix}}/config/:/app/config:z -v {{container_prefix}}/data/:/app/data:z
+    -v {{container_prefix}}/logs/:/app/logs:z -v {{container_prefix}}/thumbnail/:/app/thumbnail:z
+    -v /lib/arm-linux-gnueabihf/:/lib/arm-linux-gnueabihf -v /usr/bin/ffmpeg:/usr/bin/ffmpeg \
+    -v /usr/bin/ffprobe:/usr/bin/ffprobe \
+    -v /d/d1/recorded/:/app/recorded:z
+    {{ image_name }}"
+  args:
+    executable: /bin/bash
+  register: pull_ok
+  become: true
+  become_user: "{{container_user}}"
+  tags: podman
+
+- name: Sleep for 5 seconds to let it get past boot, then kill it
+  pause:
+    seconds: 5
+
+- name: Stop the container pending systemd
+  shell: "{{podman_path}} stop {{container_friendly_name}}"
+  args:
+    executable: /bin/bash
+  register: stop_ok
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman
+
+- name: Wait for port to be available, to confirm down.
+  ansible.builtin.wait_for:
+    port: 8888
+    state: stopped
+  become: true
+  become_user: "{{ container_user }}"
+  tags: podman
