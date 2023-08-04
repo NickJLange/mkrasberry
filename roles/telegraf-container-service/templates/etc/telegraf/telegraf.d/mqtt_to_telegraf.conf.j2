@@ -52,13 +52,9 @@
   namedrop = ["core*"]
 
 
+
 [[inputs.mqtt_consumer]]
   name_prefix="iot-"
-  ## Broker URLs for the MQTT server or cluster.  To connect to multiple
-  ## clusters or standalone servers, use a separate plugin instance.
-  ##   example: servers = ["tcp://localhost:1883"]
-  ##            servers = ["ssl://localhost:1883"]
-  ##            servers = ["ws://localhost:1883"]
   servers = ["tcp://{{ mqtt_bind_address }}:1883"]
   ## Topics that will be subscribed to.
   topics = [
@@ -66,6 +62,23 @@
     "tele/+/SENSOR",
     "homeassistant/#",
   ]
+
+#BUGFIX: https://github.com/influxdata/telegraf/issues/7536
+  data_format = "value"
+  data_type = "string"
+
+[[processors.parser]]
+   parse_fields = ["value"]
+   merge = "override"
+   data_format = "json"
+
+################################### NOT USED BOILERPLATE
+  ## Broker URLs for the MQTT server or cluster.  To connect to multiple
+  ## clusters or standalone servers, use a separate plugin instance.
+  ##   example: servers = ["tcp://localhost:1883"]
+  ##            servers = ["ssl://localhost:1883"]
+  ##            servers = ["ws://localhost:1883"]
+ 
   # topic_fields = "_/_/_/temperature"
   ## The message topic will be stored in a tag specified by this value.  If set
   ## to the empty string no topic tag will be created.
@@ -110,7 +123,7 @@
   ## Each data format has its own unique set of configuration options, read
   ## more about them here:
   ## https://github.com/influxdata/telegraf/blob/master/docs/DATA_FORMATS_INPUT.md
-  data_format = "json"
+  ## data_format = "json"
   ## Enable extracting tag values from MQTT topics
   ## _ denotes an ignored entry in the topic path
   ## [[inputs.mqtt_consumer.topic_parsing]]
@@ -120,3 +133,4 @@
   ##  fields = ""
   ## [inputs.mqtt_consumer.topic_parsing.types]
   ##
+
