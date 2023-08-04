@@ -3,7 +3,7 @@
 ################################# INSTALL #####################################
 ###############################################################################
 
-- name: Install requisite packages
+- name: Install requisite packages > 4.3
   apt:
     name:
       - ffmpeg
@@ -29,6 +29,18 @@
     - logs
     - config
     - data
+
+# - debug: var=preexisting
+### FIXME for 2.7.0 bug  ###
+- name: Add default directories for {{ container }}
+  file:
+    path: "{{ container_system_prefix }}/epgstation/data/{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  loop:
+    - upload
 
 - name: Add config data for {{ container }}
   copy:
