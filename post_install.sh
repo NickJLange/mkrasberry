@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASE=/Volumes/boot
+BASE=/Volumes/bootfs
 
 WIFI=wpa_supplicant.conf
 

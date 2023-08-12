@@ -2,22 +2,35 @@
 - hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
-  environment:
-    VAULT_USER: "{{ vault_username }}"
-    VAULT_PASSWORD: "{{ vault_password }}"
-    VAULT_AUTHTYPE: userpass
-    VAULT_ADDR: "{{ vault_address }}"
   name: Install Datadog Agent on servers on RPI
+  pre_tasks:
+    - name: "Ensure old version is gone"
+      apt:
+        name:
+          - datadog-iot-agent
+          - datadog-agent
+        state: absent
   roles:
     - { role: ansible-datadog, become: yes }
   vars:
     datadog_api_key: "{{ my_datadog_api_key }}"
-    datadog_agent_flavor: "datadog-iot-agent"
+    datadog_agent_flavor: "{{ datadog_agent }}"
     datadog_config:
+      autoconfig_exclude_features:
+        - podman
       tags:
         - env: "{{ datadog_env }}"
         - region: "{{ datadog_region }}"
-        - availability_zone: "{{ datadog_availability_zone }}"
+      #        - availability_zone: "{{ datadog_availability_zone }}"
       logs_enabled: true
+      log_level: WARN
       process_config:
         enabled: "true"
+    datadog_checks:
+      disk:
+        init_config:
+        instances:
+          - use_mount: true
+            excluded_mount_point_re:
+          - mount_point_exclude:
+              - /var/lib/container.+
