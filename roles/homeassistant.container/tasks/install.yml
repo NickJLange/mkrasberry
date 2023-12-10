@@ -1,0 +1,10 @@
+---
+
+
+- name: Add envfile for {{container}}
+  template:
+    src: envfile.j2
+    dest: "{{container_env_file}}"
+    mode: 0600
+    owner: "{{container_user}}"
+    group: "{{container_group}}"

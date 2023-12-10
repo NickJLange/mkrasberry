@@ -2,6 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+# Tarballs
+*.tar
+
+#vs-code
+.vscode
 
 # Other junk
 .DS_Store
