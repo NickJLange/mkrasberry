@@ -1,4 +1,3 @@
-
 ---
 - hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
@@ -30,8 +29,20 @@
         user: kenta
         state: present
         key: "{{ kenta_ssh_key }}"
-
-
+    - name: bash - Fix user systemd, XDG For interactive and non-interactive shells
+      ansible.builtin.lineinfile:
+        path: "/etc/bash.bashrc"
+        regexp: .*XDG_RUNTIME_DIR.*
+        state: present
+        insertafter: EOF
+        line: if [ $(id -u) != 0 ]; then declare -x XDG_RUNTIME_DIR=/var/run/user/$(id -u)/; fi
+    - name: Fix user systemd, XDG For interactive and non-interactive shells
+      ansible.builtin.lineinfile:
+        path: "/etc/profile"
+        regexp: .*XDG_RUNTIME_DIR.*
+        state: present
+        insertafter: EOF
+        line: if [ $(id -u) != 0 ]; then export XDG_RUNTIME_DIR=/var/run/user/$(id -u)/; fi
 #        git config --global alias.co checkout
 #        git config --global alias.br branch
 #        git config --global alias.ci commit

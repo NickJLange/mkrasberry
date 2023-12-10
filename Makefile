@@ -16,7 +16,7 @@ post:
 configure:
 	grep newbie hosts
 	grep -i ${hostlist}	hosts
-	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=newbie playbooks/initial-playbook-stage-1.yml || true
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=newbie -e ansible_ssh_host=${newbie} playbooks/initial-playbook-stage-1.yml || true
 	echo "Sleeping 75 Seconds for SSH to unwind"
 	sleep 75
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-2.yml
