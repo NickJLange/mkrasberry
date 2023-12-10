@@ -1,0 +1,18 @@
+#!/bin/bash
+
+export VAGRANT_CWD=/Users/njl/dev/src/njl/osxpodman/
+
+ACTION=$1
+
+case $ACTION in
+  "down")
+    echo "Shutting down podman"
+    vagrant halt
+    ;;
+
+  "up")
+    echo "STARTING podman"
+    vagrant up
+    ;;
+
+esac
