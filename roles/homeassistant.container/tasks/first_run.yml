@@ -1,0 +1,13 @@
+---
+###############################################################################
+################################# INSTALL #####################################
+###############################################################################
+
+- name: First run of image (no idea if I can )
+  shell: "{{podman_path}} run -d --replace=true --userns=keep-id --restart=always --net=host --name={{ container_friendly_name }} --env-file={{ container_env_file }} -v /run/dbus/:/run/dbus/:ro -v {{ container_prefix}}/etc/:/config {{ image_name }}"
+  args:
+    executable: /bin/bash
+  register: pull_ok
+  become: yes
+  become_user: "{{container_user}}"
+  tags: ha_systemd

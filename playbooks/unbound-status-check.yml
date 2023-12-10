@@ -1,0 +1,30 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: false
+  gather_facts: false
+  name: DNS Subdomain Refresh
+  tasks:
+    - set_fact:
+        final_output: ""
+    - block:
+        - name: "Query via IPv4"
+          ansible.builtin.command: "dig -4 +short {{ item.split('.')[0] |lower }}.{{ dnsgroup }}.nicklange.family"
+          register: output4
+          loop: "{{ groups[dnsgroup] + dns_cnames.keys() | list}}"
+        - name: "Query via IPv6"
+          ansible.builtin.command: "dig -6 +short {{ item.split('.')[0] |lower }}.{{ dnsgroup }}.nicklange.family"
+          register: output6
+          loop: "{{ groups[dnsgroup] + dns_cnames.keys() | list}}"
+        - name: "Results IPv4"
+          ansible.builtin.set_fact: final_output="{{ item.cmd }} -> {{ item.stdout }}"
+          loop: "{{ output4.results | list }}"
+          loop_control:
+            label: "IPv4 {{item.cmd[-1:] | join(' ') }} -> {{ item.stdout }}"
+        - name: "Results IPv6"
+          ansible.builtin.set_fact: final_output="{{ item.cmd }} -> {{ item.stdout }}"
+          loop: "{{ output6.results | list }}"
+          loop_control:
+            label: "IPv6 {{item.cmd[-1:] | join(' ') }} -> {{ item.stdout }}"
+
+      delegate_to: localhost
