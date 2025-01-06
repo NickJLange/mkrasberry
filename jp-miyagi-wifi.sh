@@ -1,0 +1,1 @@
+mkrasberry_config/jp-miyagi-wifi.sh
