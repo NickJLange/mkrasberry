@@ -15,6 +15,9 @@
         mirakurun_path: "{{ app_path_base }}/mirakurun"
         mariadb_path: "{{ app_path_base }}/mysql"
         epgstation_path: "{{ app_path_base }}/epgstation"
+        mirakurun_install: true
+        mariadb_install: true
+        epgstation_install: false
 
   tasks:
     - block:
@@ -61,7 +64,7 @@
         - name: "Warm up"
           set_fact:
             # May not need
-            image_name: "docker.io/mariadb:latest"
+            image_name: "docker.io/mariadb:lts"
             container_friendly_name: "mariadb"
             container_user: "mariadb"
             container_group: "mariadb"
@@ -82,6 +85,7 @@
           import_role:
             name: ansible-podman-systemd-generic
             tasks_from: "post"
+      when: mariadb_install is true
 
     - name: "Mirakurun"
       block:
@@ -109,14 +113,8 @@
           import_role:
             name: ansible-podman-systemd-generic
             tasks_from: "post"
-    ## FIXME - Chicken/Egg issue due to directory mount
-    - name: "Add the user 'epgstation' with a bash shell, appending the group 'tvtuner'"
-      ansible.builtin.user:
-        name: "{{ item }}"
-        groups: tvtuner
-        append: yes
-      loop:
-        - epgstation
+      when: mirakurun_install is true
+
     - name: "epgstation"
       block:
         - name: "Warm up"
@@ -142,6 +140,8 @@
           import_role:
             name: ansible-podman-systemd-generic
             tasks_from: "post"
+      when: epgstation_install is true
+
     - name: "Final Warning - Make sure to reboot if first install of firmware, then scan channels"
       pause:
         seconds: 30
