@@ -70,7 +70,7 @@
     -p 8888:8888/tcp -p 8889:8889/tcp
     -v {{container_prefix}}/config/:/app/config:z -v {{container_prefix}}/data/:/app/data:z
     -v {{container_prefix}}/logs/:/app/logs:z -v {{container_prefix}}/thumbnail/:/app/thumbnail:z
-    -v /lib/arm-linux-gnueabihf/:/lib/arm-linux-gnueabihf -v /usr/bin/ffmpeg:/usr/bin/ffmpeg \
+    -v /lib/aarch64-linux-gnu/:/lib/aarch64-linux-gnu -v /usr/bin/ffmpeg:/usr/bin/ffmpeg \
     -v /usr/bin/ffprobe:/usr/bin/ffprobe \
     -v /d/d1/recorded/:/app/recorded:z
     {{ image_name }}"

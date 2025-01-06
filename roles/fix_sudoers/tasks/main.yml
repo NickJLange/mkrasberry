@@ -8,3 +8,11 @@
     group: root
     mode: '0400'
 
+- name: "Template a second file to {{ sudoers_path }}/{{ passwordless_sudo_entry_filename }} "
+  template:
+    src: "{{ sudoers_path }}/{{ passwordless_sudo_entry_filename }}"
+    dest: "/{{ sudoers_path }}/{{ passwordless_sudo_entry_filename  }}"
+    owner: root
+    group: root
+    mode: '0400'
+
