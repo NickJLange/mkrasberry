@@ -1,10 +1,13 @@
 # Byte-compiled / optimized / DLL files
+*.code-workspace
 __pycache__/
 *.py[cod]
 *$py.class
 # Tarballs
 *.tar
 .zed
+images/*
+kernels/*
 
 #vs-code
 .vscode

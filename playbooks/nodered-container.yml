@@ -1,4 +1,4 @@
-w---
+---
 - hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
@@ -14,11 +14,11 @@ w---
         container_home_url: https://nodered.org/
       tags: key_vars
   tasks:
-     - import_role:
+    - import_role:
         name: ansible-podman-systemd-generic
         tasks_from: "pre"
-     - import_role:
+    - import_role:
         name: nodered.container
-     - import_role:
+    - import_role:
         name: ansible-podman-systemd-generic
         tasks_from: "post"

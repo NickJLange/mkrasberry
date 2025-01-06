@@ -1,4 +1,3 @@
-
 ---
 - hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
@@ -7,8 +6,8 @@
     - role: "fix_sudoers"
     - role: mikolak-net.raspi_config
       raspi_config_replace_user:
-         name: "{{ local_ssh_user }}"
-         path_to_ssh_key: "/Users/{{ local_ssh_user }}/.ssh/id_rsa_stronger.pub"
+        name: "{{ local_ssh_user }}"
+        path_to_ssh_key: "/Users/{{ local_ssh_user }}/.ssh/id_rsa_stronger.pub"
     - role: "locales"
   tasks:
     - name: Install requisite packages (likely present)
@@ -16,33 +15,10 @@
         name:
           - vim
           - acl
+          - ca-certificates
         state: present
         force_apt_get: yes
         cache_valid_time: 84600
-    - sysctl:
-        name: net.core.default_qdisc
-        value: fq
-        state: present
-    - sysctl:
-        name: net.ipv4.tcp_congestion_control
-        value: bbr
-        state: present
-    - sysctl:
-        name:  net.core.rmem_max
-        value: "{{ MaxExpectedPathBDP }}"
-        state: present
-    - sysctl:
-        name: net.core.wmem_max
-        value: "{{ MaxExpectedPathBDP }}"
-        state: present
-    - sysctl:
-        name: net.ipv4.tcp_rmem
-        value: "4096 87380 {{ MaxExpectedPathBDP }}"
-        state: present
-    - sysctl:
-        name: net.ipv4.tcp_rmem
-        value: "4096 87380 {{ MaxExpectedPathBDP }}"
-        state: present
     - name: Remove existing symlink
       file:
         path: /etc/localtime
@@ -60,4 +36,8 @@
     - name: Lock the Raspberry PI user
       user:
         name: pi
+        password_lock: true
+    - name: Lock the Raspberry PI user
+      user:
+        name: "{{ local_ssh_user }}"
         password_lock: true
