@@ -5,13 +5,14 @@
   roles:
     - role: Stouts.hostname
     - role: msmtp
-    - role: wifiClientSetup
+  #    - role: wifiClientSetup
   tasks:
     - name: "Delete the Raspberry PI default user: {{ item }}"
       shell:
         "if id {{ item }} 2>/dev/null 1>/dev/null; then killall -q -u {{ item }} -9 && userdel {{ item }}; fi "
         #FIXME: Stupid systemd
       loop: "{{ poison_usernames }} "
+      ignore_errors: true
 
     - name: Install requisite packages (likely present)
       apt:
@@ -23,6 +24,34 @@
           - libpam-cgfs
           - cgroup-tools
           - cgroupfs-mount
+          - ca-certificates
+          - systemd-cron
+          - cron 
+          - less
         state: present
         force_apt_get: yes
         cache_valid_time: 84600
+    - sysctl:
+        name: net.core.default_qdisc
+        value: fq
+        state: present
+    - sysctl:
+        name: net.ipv4.tcp_congestion_control
+        value: bbr
+        state: present
+    - sysctl:
+        name:  net.core.rmem_max
+        value: "{{ MaxExpectedPathBDP }}"
+        state: present
+    - sysctl:
+        name: net.core.wmem_max
+        value: "{{ MaxExpectedPathBDP }}"
+        state: present
+    - sysctl:
+        name: net.ipv4.tcp_rmem
+        value: "4096 87380 {{ MaxExpectedPathBDP }}"
+        state: present
+    - sysctl:
+        name: net.ipv4.tcp_rmem
+        value: "4096 87380 {{ MaxExpectedPathBDP }}"
+        state: present

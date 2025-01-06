@@ -7,15 +7,12 @@
     VAULT_PASSWORD: "{{ vault_password }}"
     VAULT_AUTHTYPE: userpass
     VAULT_ADDR: "{{ vault_address }}"
-  pre_tasks:
-     - name:
-       set_fact:
-         provision_wg_server: False
-         provision_wg_client: True
-         add_wg_client: False
-         wireguard_interface: "{{wireguard_client_interface}}"
-  roles:
-     - role: wireguardClientSetup
-#     - role: role-install-gcloud
-#       become: yes
-#       become_user: "{{ local_ssh_user }}"
+  tasks:
+    - name: Install requisite packages (likely present)
+      apt:
+        name:
+          - wireguard
+        state: present
+        force_apt_get: yes
+        cache_valid_time: 84600
+      register: wireguard_packages_present
