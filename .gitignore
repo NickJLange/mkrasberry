@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 # Tarballs
 *.tar
+.zed
 
 #vs-code
 .vscode
