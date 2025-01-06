@@ -1,13 +1,13 @@
+
 ---
 - hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
   roles:
     - role: "fix_sudoers"
-    - role: mikolak-net.raspi_config
       raspi_config_replace_user:
-        name: "{{ local_ssh_user }}"
-        path_to_ssh_key: "/Users/{{ local_ssh_user }}/.ssh/id_rsa_stronger.pub"
+         name: "{{ local_ssh_user }}"
+         path_to_ssh_key: "/Users/{{ local_ssh_user }}/.ssh/id_rsa_stronger.pub"
     - role: "locales"
   tasks:
     - name: Install requisite packages (likely present)
@@ -36,8 +36,4 @@
     - name: Lock the Raspberry PI user
       user:
         name: pi
-        password_lock: true
-    - name: Lock the Raspberry PI user
-      user:
-        name: "{{ local_ssh_user }}"
         password_lock: true
