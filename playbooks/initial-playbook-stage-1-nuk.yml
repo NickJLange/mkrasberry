@@ -1,0 +1,32 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  roles:
+    - role: "fix_sudoers"
+    - role: "locales"
+  tasks:
+    - name: Install requisite packages (likely present)
+      apt:
+        name:
+          - vim
+          - acl
+          - ca-certificates
+          - cron
+        state: present
+        force_apt_get: yes
+        cache_valid_time: 84600
+    - name: Remove existing symlink
+      file:
+        path: /etc/localtime
+        state: absent
+    - name: Add symlink
+      file:
+        src: "/usr/share/zoneinfo/{{Timezone}}"
+        path: /etc/localtime
+        owner: root
+        group: root
+        state: link
+        mode: "0644"
+    - name: Add symlink
+      shell: "echo {{Timezone}} > /etc/timezone "
