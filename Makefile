@@ -13,7 +13,7 @@ build_image:
 
 install_os:
 	echo ${OSIMAGE}
-	echo time sudo dd if=${OSIMAGE} of=/dev/disk2 bs=1m conv=sync
+	echo time sudo dd if=${OSIMAGE} of=/dev/${TARGETDISK} bs=1m conv=sync
 	diskutil list
 
 post:
