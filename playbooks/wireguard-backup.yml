@@ -1,0 +1,20 @@
+- hosts: "{{ hostlist }}"
+  become: yes
+  tasks:
+    - name: Tar up /etc/wireguard
+      ansible.builtin.archive:
+        path: /etc/wireguard
+        dest: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
+        format: tar
+
+    - name: Fetch the wireguard backup
+      ansible.builtin.fetch:
+        src: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
+        dest: "backups/"
+        flat: yes
+
+    - name: Remove temporary file from remote host
+      ansible.builtin.file:
+        path: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
+        state: absent
+      become: yes
