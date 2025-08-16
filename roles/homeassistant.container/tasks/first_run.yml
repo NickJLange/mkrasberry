@@ -13,6 +13,6 @@
     executable: /bin/bash
     chdir: "{{ container_prefix}}/"
   register: pull_ok
-  become: yes
+  become: true
   become_user: "{{container_user}}"
   tags: ha_systemd
