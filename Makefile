@@ -34,18 +34,20 @@ configure:
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/syslog-configure.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/datadog-install.yml
 	@echo "Installing wireguard - make sure to restore from backup"
-	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-client-install.yml
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-install-simple.yml
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/wireguard-restore.yml -e dnsgroup=${dnsgroup}
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e dnsgroup=${dnsgroup}
     ANSIBLE_HOST_KEY_CHECKING=False ansible -vv -b -m reboot ${hostlist} ${host_ip_string}
 	#reboot for DNS to kick in / make sure everything comes up
 
 configure_dns:
 	@grep -i ${hostlist}	hosts
 	@echo ${host_ip_string} is set
+	@echo ${dnsgroup} is set
 #	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/pihole-install.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/unbound-refresh-localzone.yml -e dnsgroup=miyagi
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/unbound-refresh-localzone.yml -e dnsgroup=newyork
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/unbound-refresh-localzone.yml -e dnsgroup=wisconsin
-
 
 
 all: install_os post_install

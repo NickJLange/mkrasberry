@@ -10,7 +10,7 @@
     - name: Fetch the wireguard backup
       ansible.builtin.fetch:
         src: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
-        dest: "backups/"
+        dest: "../backups/"
         flat: yes
 
     - name: Remove temporary file from remote host

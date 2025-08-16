@@ -16,8 +16,8 @@
         mariadb_path: "{{ app_path_base }}/mysql"
         epgstation_path: "{{ app_path_base }}/epgstation"
         mirakurun_install: true
-        mariadb_install: true
-        epgstation_install: false
+        mariadb_install: false
+        epgstation_install: true
 
   tasks:
     - block:
