@@ -37,7 +37,7 @@ configure:
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-install-simple.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/wireguard-restore.yml -e dnsgroup=${dnsgroup}
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e dnsgroup=${dnsgroup}
-    ANSIBLE_HOST_KEY_CHECKING=False ansible -vv -b -m reboot ${hostlist} ${host_ip_string}
+	ANSIBLE_HOST_KEY_CHECKING=False ansible -vv -b -m reboot ${hostlist} ${host_ip_string}
 	#reboot for DNS to kick in / make sure everything comes up
 
 configure_dns:
