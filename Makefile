@@ -34,6 +34,7 @@ configure:
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/syslog-configure.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/datadog-install.yml
 	@echo "Installing wireguard - make sure to restore from backup"
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/fix-locale.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-install-simple.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/wireguard-restore.yml -e dnsgroup=${dnsgroup}
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e dnsgroup=${dnsgroup}
