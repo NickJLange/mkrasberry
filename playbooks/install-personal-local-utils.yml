@@ -1,0 +1,9 @@
+- hosts: "{{ hostlist }}"
+  become: yes
+  tasks:
+    - name: Copy wireguard backup to remote host
+      ansible.builtin.copy:
+        src: sub
+        dest: /usr/sbin
+        mode: "0700"
+        owner: root

@@ -1,0 +1,29 @@
+- hosts: "{{ hostlist }}"
+  become: yes
+  tasks:
+    - name: Copy wireguard backup to remote host
+      ansible.builtin.copy:
+        src: "../../backups/wireguard_backup_{{ inventory_hostname }}.tar"
+        dest: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
+
+    - name: Restore /etc/wireguard from backup
+      ansible.builtin.unarchive:
+        src: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
+        dest: /etc
+        remote_src: yes
+
+    - name: Remove temporary file from remote host
+      ansible.builtin.file:
+        path: "/tmp/wireguard_backup_{{ inventory_hostname }}.tar"
+        state: absent
+    - name: Bounce wireguard service
+      ansible.builtin.systemd:
+        name: wg-quick@wg1
+        state: restarted
+        enabled: yes
+    - name: Bounce wireguard service
+      ansible.builtin.systemd:
+        name: wg-quick@wg0
+        state: restarted
+        enabled: yes
+      ignore_errors: yes

@@ -1,0 +1,76 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever')}}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  name: Fixe Locale Settings from whatever is screwing them up.
+  tasks:
+    - block:
+        - name: Install required packages for locale management
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items:
+            - locales-all
+          when: ansible_os_family == "Debian"
+
+        - name: Install required packages for locale management (RedHat)
+          package:
+            name: "{{ item }}"
+            state: present
+          with_items:
+            - glibc-common
+          when: ansible_os_family == "RedHat"
+
+        - name: Ensure en_US.UTF-8 locale is generated
+          locale_gen:
+            name: en_US.UTF-8
+            state: present
+          when: ansible_os_family == "Debian"
+
+        - name: Generate en_US.UTF-8 locale (RedHat)
+          command: localedef -c -i en_US -f UTF-8 en_US.UTF-8
+          changed_when: false
+          when: ansible_os_family == "RedHat"
+
+        - name: Set system-wide locale in /etc/default/locale (Debian)
+          copy:
+            dest: /etc/default/locale
+            content: |
+              LANG=en_US.UTF-8
+              LANGUAGE=en_US.UTF-8
+              LC_ALL=en_US.UTF-8
+              LC_CTYPE=en_US.UTF-8
+              LC_COLLATE=en_US.UTF-8
+              LC_MESSAGES=en_US.UTF-8
+          when: ansible_os_family == "Debian"
+
+        - name: Set system-wide locale in /etc/locale.conf (RedHat)
+          copy:
+            dest: /etc/locale.conf
+            content: |
+              LANG=en_US.UTF-8
+              LC_ALL=en_US.UTF-8
+              LC_CTYPE=en_US.UTF-8
+              LC_COLLATE=en_US.UTF-8
+              LC_MESSAGES=en_US.UTF-8
+          when: ansible_os_family == "RedHat"
+
+        - name: Update current environment
+          command: update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+          changed_when: false
+          when: ansible_os_family == "Debian"
+
+        # For user-specific settings (if needed)
+        - name: Ensure locale settings in user profile
+          blockinfile:
+            path: /etc/profile.d/locale.sh
+            create: yes
+            block: |
+              export LANG=en_US.UTF-8
+              export LANGUAGE=en_US.UTF-8
+              export LC_ALL=en_US.UTF-8
+              export LC_CTYPE=en_US.UTF-8
+              export LC_COLLATE=en_US.UTF-8
+              export LC_MESSAGES=en_US.UTF-8
+            mode: "0644"
+      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
