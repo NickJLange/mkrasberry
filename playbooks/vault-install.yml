@@ -6,7 +6,7 @@
     - name: "Warm up"
       set_fact:
         # May not need
-        image_name: "docker.io/library/vault:latest"
+        image_name: "docker.io/hashicorp/vault:latest"
         container_friendly_name: "vault"
         container_user: "vault"
         container_group: "vault"

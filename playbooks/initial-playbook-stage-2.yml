@@ -23,7 +23,7 @@
           - knockd
           - libpam-cgfs
           - cgroup-tools
-          - cgroupfs-mount
+#          - cgroupfs-mount
           - ca-certificates
           - systemd-cron
           - cron 
