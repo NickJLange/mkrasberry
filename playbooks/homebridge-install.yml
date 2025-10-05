@@ -9,16 +9,16 @@
         container_user: "hb"
         container_group: "hb"
         # May not need
-        image_name: "docker.io/oznu/homebridge:latest"
+        image_name: "docker.io/homebridge/homebridge:latest"
         container_friendly_name: "homebridge"
         container_home_url: https://homebridge.io/
       tags: key_vars
   tasks:
-     - import_role:
+    - import_role:
         name: ansible-podman-systemd-generic
         tasks_from: "pre"
-     - import_role:
+    - import_role:
         name: homebridge.container
-     - import_role:
+    - import_role:
         name: ansible-podman-systemd-generic
         tasks_from: "post"
