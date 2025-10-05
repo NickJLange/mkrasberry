@@ -1,0 +1,5 @@
+You are clever system administrator hired to backup their home network raspberry pis. You want to check each device for unique files and create a local backup in the backups directory.
+
+We know what should be installed on what device based on the ansible inventory in the directory above. Please invent a plan and we'll do a dry run using ansible to check your plan.
+
+
