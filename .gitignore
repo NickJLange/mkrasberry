@@ -9,6 +9,10 @@ __pycache__/
 images/*
 kernels/*
 
+#random ansible stuff
+output.yaml
+GEMINI.md
+
 #vs-code
 .vscode
 
@@ -146,3 +150,7 @@ dmypy.json
 .pyre/
 
 backups/
+
+# Temporary files and backups
+tmp
+backups
