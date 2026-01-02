@@ -1,0 +1,40 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever') }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  vars:
+    backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    backup_services:
+      - name: wireguard
+        path: /etc/wireguard
+      - name: mosquitto
+        path: /usr/local/mosquitto
+      - name: homebridge
+        path: /usr/local/homebridge
+      - name: homeassistant
+        path: /usr/local/homeassistant
+      - name: nodered
+        path: /usr/local/nodered
+      - name: pihole
+        path: /usr/local/pihole
+  tasks:
+    - name: Create backup tarballs for each service
+      shell: |
+        if [ -d "{{ item.path }}" ] || [ -f "{{ item.path }}" ]; then
+          tar -cf "/tmp/{{ item.name }}_backup_{{ inventory_hostname }}_{{ backup_timestamp }}.tar" --exclude='.local/share/containers' -C "$(dirname '{{ item.path }}')" "$(basename '{{ item.path }}')" 2>/dev/null && chmod 0644 "/tmp/{{ item.name }}_backup_{{ inventory_hostname }}_{{ backup_timestamp }}.tar"
+        fi
+      loop: "{{ backup_services }}"
+      ignore_errors: true
+
+    - name: List created backup files
+      find:
+        paths: /tmp
+        patterns: "*_backup_{{ inventory_hostname }}_*.tar"
+      register: backup_files
+
+    - name: Display created backups
+      debug:
+        msg: "Created backup: {{ item.path | basename }}"
+      loop: "{{ backup_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
