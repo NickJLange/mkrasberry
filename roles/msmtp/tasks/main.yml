@@ -8,5 +8,5 @@
 - import_tasks: configure_user.yml
   become: yes
   become_user: "{{ msmtp_user }}"
-  when: msmtp_present
+  when: msmtp_enabled
   tags: [msmtp_setup]

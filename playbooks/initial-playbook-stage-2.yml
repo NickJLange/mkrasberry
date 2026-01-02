@@ -11,7 +11,7 @@
       shell:
         "if id {{ item }} 2>/dev/null 1>/dev/null; then killall -q -u {{ item }} -9 && userdel {{ item }}; fi "
         #FIXME: Stupid systemd
-      loop: "{{ poison_usernames }} "
+      loop: "{{ poison_usernames }}"
       ignore_errors: true
 
     - name: Install requisite packages (likely present)
