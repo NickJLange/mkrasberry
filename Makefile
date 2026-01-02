@@ -33,4 +33,20 @@ configure:
 
 
 
+backup-create:
+	@grep -i ${hostlist} hosts
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/backup-services.yml
+
+backup-fetch:
+	@grep -i ${hostlist} hosts
+	./scripts/backup-fetch.sh ${hostlist}
+
+backup-restore:
+	@grep -i ${hostlist} hosts
+	./scripts/backup-restore.sh ${hostlist}
+
+backup-restore-full:
+	@grep -i ${hostlist} hosts
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/restore-services.yml
+
 all: install_os post_install
