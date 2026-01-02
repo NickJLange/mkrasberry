@@ -1,0 +1,200 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever') }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  vars:
+    restore_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    restore_services:
+      - name: wireguard
+        path: /etc/wireguard
+        containers_path: null
+        systemd_unit: wg-quick@wg1.service
+        owner: root
+        owner_group: root
+      - name: mosquitto
+        path: /usr/local/mosquitto
+        containers_path: /usr/local/mosquitto/.local/share/containers
+        systemd_unit: mosquitto.service
+        owner: mqtt
+        owner_group: mqtt
+      - name: homebridge
+        path: /usr/local/homebridge
+        containers_path: /usr/local/homebridge/.local/share/containers
+        systemd_unit: homebridge.service
+        owner: hb
+        owner_group: hb
+      - name: homeassistant
+        path: /usr/local/homeassistant
+        containers_path: /usr/local/homeassistant/.local/share/containers
+        systemd_unit: homeassistant.service
+        owner: homeassistant
+        owner_group: homeassistant
+      - name: nodered
+        path: /usr/local/nodered
+        containers_path: /usr/local/nodered/.local/share/containers
+        systemd_unit: nodered.service
+        owner: nodered
+        owner_group: nodered
+      - name: pihole
+        path: /usr/local/pihole
+        containers_path: /usr/local/pihole/.local/share/containers
+        systemd_unit: pihole.service
+        owner: pihole
+        owner_group: pihole
+  tasks:
+    - name: Find latest backup tar for each service
+      find:
+        paths: /tmp
+        patterns: "{{ item.name }}_backup_{{ inventory_hostname }}_*.tar.gz"
+        file_type: file
+      loop: "{{ restore_services }}"
+      register: backup_files_result
+
+    - name: Create safety backup of existing service directory
+      shell: |
+        if [ -d "{{ item.path }}" ] || [ -f "{{ item.path }}" ]; then
+          mv "{{ item.path }}" "{{ item.path }}_backup_{{ restore_timestamp }}"
+          echo "Safety backup created: {{ item.path }}_backup_{{ restore_timestamp }}"
+        else
+          echo "No existing {{ item.path }} to backup"
+        fi
+      loop: "{{ restore_services }}"
+      ignore_errors: true
+      register: safety_backup_result
+
+    - name: Stop services (non-root users with --user flag)
+      shell: |
+        sudo -u {{ item.owner }} systemctl --user stop {{ item.systemd_unit }}
+      loop: "{{ restore_services }}"
+      when: item.owner != 'root'
+      ignore_errors: true
+      register: stop_service_user_result
+
+    - name: Stop services (root)
+      systemd:
+        name: "{{ item.systemd_unit }}"
+        state: stopped
+      loop: "{{ restore_services }}"
+      when: item.owner == 'root'
+      ignore_errors: true
+      register: stop_service_root_result
+
+    - name: Preserve containers by moving them out
+      shell: |
+        if [ -d "{{ item.containers_path }}" ]; then
+          mkdir -p /tmp
+          mv "{{ item.containers_path }}" "/tmp/{{ item.name }}_containers_backup_{{ restore_timestamp }}"
+          echo "Containers preserved: /tmp/{{ item.name }}_containers_backup_{{ restore_timestamp }}"
+        else
+          echo "No containers directory to preserve at {{ item.containers_path }}"
+        fi
+      loop: "{{ restore_services }}"
+      when: item.containers_path is not none
+      ignore_errors: true
+      register: preserve_containers_result
+
+    - name: Extract backup tarballs
+      shell: |
+        BACKUP_FILE=$(ls -t /tmp/{{ item.name }}_backup_{{ inventory_hostname }}_*.tar.gz 2>/dev/null | head -1)
+        if [ -n "$BACKUP_FILE" ]; then
+          tar -xzf "$BACKUP_FILE" -C /tmp
+          echo "Extracted: $BACKUP_FILE"
+        else
+          echo "No backup file found for {{ item.name }}"
+        fi
+      loop: "{{ restore_services }}"
+      ignore_errors: true
+      register: extract_result
+
+    - name: Move restored files into place
+      shell: |
+        RESTORED_DIR="/tmp/{{ item.name }}"
+        TARGET_PARENT="{{ item.path | dirname }}"
+        if [ -d "$RESTORED_DIR" ]; then
+          mv "$RESTORED_DIR" "{{ item.path }}"
+          echo "Restored: {{ item.path }}"
+        else
+          echo "No restored directory found at $RESTORED_DIR"
+        fi
+      loop: "{{ restore_services }}"
+      ignore_errors: true
+      register: move_into_place_result
+
+    - name: Restore containers into place
+      shell: |
+        CONTAINERS_BACKUP="/tmp/{{ item.name }}_containers_backup_{{ restore_timestamp }}"
+        CONTAINERS_TARGET="{{ item.path }}/.local/share/containers"
+        if [ -d "$CONTAINERS_BACKUP" ]; then
+          mkdir -p "{{ item.path }}/.local/share"
+          mv "$CONTAINERS_BACKUP" "$CONTAINERS_TARGET"
+          echo "Containers restored: $CONTAINERS_TARGET"
+        else
+          echo "No container backup found at $CONTAINERS_BACKUP"
+        fi
+      loop: "{{ restore_services }}"
+      when: item.containers_path is not none
+      ignore_errors: true
+      register: restore_containers_result
+
+    - name: Fix ownership (non-root)
+      shell: |
+        chown -R {{ item.owner }}:{{ item.owner_group }} "{{ item.path }}"
+        echo "Ownership set: {{ item.owner }}:{{ item.owner_group }} on {{ item.path }}"
+      loop: "{{ restore_services }}"
+      when: item.owner != 'root'
+      ignore_errors: true
+      register: chown_user_result
+
+    - name: Fix ownership (root)
+      file:
+        path: "{{ item.path }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.owner_group }}"
+        recurse: yes
+      loop: "{{ restore_services }}"
+      when: item.owner == 'root'
+      ignore_errors: true
+      register: chown_root_result
+
+    - name: Start services (non-root users with --user flag)
+      shell: |
+        sudo -u {{ item.owner }} systemctl --user start {{ item.systemd_unit }}
+        echo "Service started (--user): {{ item.systemd_unit }}"
+      loop: "{{ restore_services }}"
+      when: item.owner != 'root'
+      ignore_errors: true
+      register: start_service_user_result
+
+    - name: Start services (root)
+      systemd:
+        name: "{{ item.systemd_unit }}"
+        state: started
+      loop: "{{ restore_services }}"
+      when: item.owner == 'root'
+      ignore_errors: true
+      register: start_service_root_result
+
+    - name: Verify services (non-root users)
+      shell: |
+        sudo -u {{ item.owner }} systemctl --user status {{ item.systemd_unit }} || echo "Service status check failed for {{ item.systemd_unit }}"
+      loop: "{{ restore_services }}"
+      when: item.owner != 'root'
+      ignore_errors: true
+      register: verify_service_user_result
+
+    - name: Verify services (root)
+      systemd:
+        name: "{{ item.systemd_unit }}"
+      loop: "{{ restore_services }}"
+      when: item.owner == 'root'
+      ignore_errors: true
+      register: verify_service_root_result
+
+    - name: Display restore summary
+      debug:
+        msg: |
+          Restore completed for {{ item.name }}:
+          - Safety backup: {{ item.path }}_backup_{{ restore_timestamp }}
+          - Service: {{ item.systemd_unit }}
+          - Owner: {{ item.owner }}:{{ item.owner_group }}
+      loop: "{{ restore_services }}"
