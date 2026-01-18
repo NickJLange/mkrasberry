@@ -1,0 +1,108 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever') }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  vars:
+    restore_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    service_config:
+      name: pihole
+      path: /usr/local/pihole
+      containers_path: /usr/local/pihole/.local/share/containers
+      systemd_unit: pihole.service
+      owner: pihole
+      owner_group: pihole
+  tasks:
+    - name: Create safety backup of existing pihole directory
+      shell: |
+        if [ -d "{{ service_config.path }}" ]; then
+          mv "{{ service_config.path }}" "{{ service_config.path }}_backup_{{ restore_timestamp }}"
+          echo "Safety backup created: {{ service_config.path }}_backup_{{ restore_timestamp }}"
+        else
+          echo "No existing {{ service_config.path }} to backup"
+        fi
+      ignore_errors: true
+
+    - name: Stop pihole service
+      shell: |
+        sudo -u {{ service_config.owner }} systemctl --user stop {{ service_config.systemd_unit }}
+      ignore_errors: true
+
+    - name: Preserve containers by moving them out
+      shell: |
+        if [ -d "{{ service_config.containers_path }}" ]; then
+          mkdir -p /tmp
+          mv "{{ service_config.containers_path }}" "/tmp/{{ service_config.name }}_containers_backup_{{ restore_timestamp }}"
+          echo "Containers preserved: /tmp/{{ service_config.name }}_containers_backup_{{ restore_timestamp }}"
+        else
+          echo "No containers directory to preserve at {{ service_config.containers_path }}"
+        fi
+      ignore_errors: true
+
+    - name: Find and extract latest pihole backup
+      shell: |
+        BACKUP_FILE=$(ls -t /tmp/{{ service_config.name }}_backup_{{ inventory_hostname }}_*.tar.gz 2>/dev/null | head -1)
+        if [ -n "$BACKUP_FILE" ]; then
+          tar -xzf "$BACKUP_FILE" -C /tmp
+          echo "Extracted: $BACKUP_FILE"
+        else
+          echo "No backup file found for {{ service_config.name }}"
+          exit 1
+        fi
+      ignore_errors: true
+
+    - name: Move restored pihole config into place
+      shell: |
+        RESTORED_DIR="/tmp/{{ service_config.name }}"
+        if [ -d "$RESTORED_DIR" ]; then
+          mv "$RESTORED_DIR" "{{ service_config.path }}"
+          echo "Restored: {{ service_config.path }}"
+        else
+          echo "No restored directory found at $RESTORED_DIR"
+        fi
+      ignore_errors: true
+
+    - name: Restore containers into place
+      shell: |
+        CONTAINERS_BACKUP="/tmp/{{ service_config.name }}_containers_backup_{{ restore_timestamp }}"
+        CONTAINERS_TARGET="{{ service_config.path }}/.local/share/containers"
+        if [ -d "$CONTAINERS_BACKUP" ]; then
+          mkdir -p "{{ service_config.path }}/.local/share"
+          mv "$CONTAINERS_BACKUP" "$CONTAINERS_TARGET"
+          echo "Containers restored: $CONTAINERS_TARGET"
+          ls -la "$CONTAINERS_TARGET" | head -10
+        else
+          echo "No container backup found at $CONTAINERS_BACKUP"
+        fi
+      ignore_errors: true
+
+    - name: Fix pihole ownership
+      shell: |
+        chown -R {{ service_config.owner }}:{{ service_config.owner_group }} "{{ service_config.path }}"
+        echo "Ownership set: {{ service_config.owner }}:{{ service_config.owner_group }} on {{ service_config.path }}"
+      ignore_errors: true
+
+    - name: Start pihole service
+      shell: |
+        sudo -u {{ service_config.owner }} systemctl --user start {{ service_config.systemd_unit }}
+        echo "Service started (--user): {{ service_config.systemd_unit }}"
+      ignore_errors: true
+
+    - name: Wait for service to stabilize
+      pause:
+        seconds: 3
+
+    - name: Verify pihole service
+      shell: |
+        sudo -u {{ service_config.owner }} systemctl --user status {{ service_config.systemd_unit }} || echo "Service status check failed"
+      ignore_errors: true
+      register: verify_result
+
+    - name: Display restore summary and verification
+      debug:
+        msg: |
+          Pihole restore completed:
+          - Safety backup: {{ service_config.path }}_backup_{{ restore_timestamp }}
+          - Service: {{ service_config.systemd_unit }}
+          - Owner: {{ service_config.owner }}:{{ service_config.owner_group }}
+          - Verification output:
+          {{ verify_result.stdout }}
