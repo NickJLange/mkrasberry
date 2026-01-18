@@ -2,7 +2,7 @@
 - hosts: "{{ hostlist | default('do_not_match_ever')}}"
   remote_user: "{{ local_ssh_user }}"
   become: true
-  name: "Install Containerized home assistant as {{container_user}}"
+  name: "Install Containerized home assistant"
   pre_tasks:
     - name: "Warm up"
       set_fact:

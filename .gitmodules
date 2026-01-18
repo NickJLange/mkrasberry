@@ -63,3 +63,6 @@
 [submodule "roles/ansible-ip_defense_shield"]
 	path = roles/ansible-ip_defense_shield
 	url = git@github.com:NickJLange/ansible-ip_defense_shield.git
+[submodule "roles/mosquitto.container"]
+	path = roles/mosquitto.container
+	url = git@github.com:NickJLange/mosquitto.container.git

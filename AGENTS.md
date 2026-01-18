@@ -1,10 +1,33 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> [!IMPORTANT]
+> This project follows the official [AI Agent Standards](file:///Users/njl/dev/standards/README.md). All agents MUST adhere to the [Spec-Driven Development workflow](file:///Users/njl/dev/standards/AGENT_WORKFLOW.md) for non-trivial tasks.
+
+This file provides guidance to AI Agents (Claude, Gemini, etc.) when working with code in this repository.
 
 ## Project Overview
 
 mkrasberry is a Raspberry Pi infrastructure automation project that uses Ansible to deploy and manage a distributed network of Raspberry Pi devices across multiple geographic locations (New York, Wisconsin, Japan/Miyagi). The project creates a homogeneous, containerized infrastructure running services like DNS filtering, home automation, VPN, monitoring, and logging.
+
+## Current Focus / Active Tasks
+
+The following Jira tasks are currently prioritizing development in this repository:
+
+### [HOMETECH-29] Zigbee Device Monitoring
+- **Goal**: Implement alerting for Zigbee IoT devices (battery < 25%, no check-in > 24h).
+- **Relevant Code**:
+    - `roles/homeassistant.container`: Source of Zigbee device data (via ZHA/Zigbee2MQTT integration).
+    - `roles/telegraf-container-service`: Metrics collection to be sent to Datadog.
+    - `roles/nodered.container`: Potential automation logic for status checks.
+    - `roles/mosquitto.container`: MQTT broker for device messages.
+
+### [HOMETECH-17] SSH Lockdown & User Access
+- **Goal**: Lock down SSH ports, validate local accounts, and strictly control user access.
+- **Relevant Code**:
+    - `roles/fix_sudoers`: User permission management.
+    - `roles/ansible-ip_defense_shield`: Firewall rules (iptables/nftables) for SSH port locking.
+    - `roles/podmanSetupRaspberryPi`: Local user setup for container management.
+    - `playbooks/initial-playbook-stage-*.yml`: Base system configuration rules.
 
 ## Architecture
 
@@ -44,11 +67,34 @@ Use `host_ip_override` variable to target specific IP addresses:
 make configure hostlist=hostname host_ip_override=192.168.1.100
 ```
 
+### Data Backup and Restore
+Before reflashing devices, backup service configuration directories:
+```bash
+make backup-create hostlist=hostname          # Create tarballs on remote /tmp
+make backup-fetch hostlist=hostname           # Fetch tarballs to local backups/
+make backup-restore hostlist=hostname         # Restore tarballs to remote /tmp
+```
+
+**Backup Operations:**
+- **Create**: `playbooks/backup-services.yml` - Creates gzip tarballs for:
+  - `/etc/wireguard`
+  - `/usr/local/mosquitto`
+  - `/usr/local/homebridge`
+  - `/usr/local/homeassistant`
+  - `/usr/local/pihole`
+  - Files placed in `/tmp` with 0644 permissions, skips missing directories
+- **Fetch**: `scripts/backup-fetch.sh` - Copies tarballs from remote `/tmp` to `backups/$hostname/$(date +%Y-%m-%d)/`
+- **Restore**: `scripts/backup-restore.sh` - Copies tarballs from `backups/$hostname/` back to remote `/tmp/`
+
 ## Directory Structure
 
 - **`playbooks/`**: Main Ansible playbooks for different deployment scenarios
   - `initial-playbook-stage-*.yml`: Multi-stage device initialization
   - Service-specific playbooks (pihole, homeassistant, wireguard, etc.)
+  - `backup-services.yml`: Create tarballs of service config directories
+- **`scripts/`**: Utility scripts for common operations
+  - `backup-fetch.sh`: Fetch backups from remote hosts
+  - `backup-restore.sh`: Restore backups to remote hosts
 - **`roles/`**: Reusable Ansible roles organized by service type
   - Container roles: `*.container` (pihole.container, homeassistant.container, etc.)
   - Infrastructure roles: wireguard, telegraf, security components

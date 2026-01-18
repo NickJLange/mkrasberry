@@ -1,0 +1,70 @@
+---
+- hosts: "{{ hostlist | default('do_not_match_ever') }}"
+  remote_user: "{{ local_ssh_user }}"
+  become: true
+  vars:
+    restore_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    service_config:
+      name: homeassistant
+      path: /usr/local/homeassistant
+      systemd_unit: homeassistant.service
+      owner: ha
+      owner_group: ha
+  tasks:
+    - name: Create safety backup of existing homeassistant directory
+      shell: |
+        if [ -d "{{ service_config.path }}" ]; then
+          mv "{{ service_config.path }}" "{{ service_config.path }}_backup_{{ restore_timestamp }}"
+          echo "Safety backup created: {{ service_config.path }}_backup_{{ restore_timestamp }}"
+        else
+          echo "No existing {{ service_config.path }} to backup"
+        fi
+      ignore_errors: true
+
+    - name: Stop homeassistant service
+      shell: |
+        sudo -u {{ service_config.owner }} systemctl --user stop {{ service_config.systemd_unit }}
+      ignore_errors: true
+
+    - name: Find and extract latest homeassistant backup
+      shell: |
+        BACKUP_FILE=$(ls -t /tmp/{{ service_config.name }}_backup_{{ inventory_hostname }}_*.tar.gz 2>/dev/null | head -1)
+        if [ -n "$BACKUP_FILE" ]; then
+          tar -xzf "$BACKUP_FILE" -C /tmp
+          echo "Extracted: $BACKUP_FILE"
+        else
+          echo "No backup file found for {{ service_config.name }}"
+          exit 1
+        fi
+      ignore_errors: true
+
+    - name: Move restored homeassistant config into place
+      shell: |
+        RESTORED_DIR="/tmp/{{ service_config.name }}"
+        if [ -d "$RESTORED_DIR" ]; then
+          mv "$RESTORED_DIR" "{{ service_config.path }}"
+          echo "Restored: {{ service_config.path }}"
+        else
+          echo "No restored directory found at $RESTORED_DIR"
+        fi
+      ignore_errors: true
+
+    - name: Fix homeassistant ownership
+      shell: |
+        chown -R {{ service_config.owner }}:{{ service_config.owner_group }} "{{ service_config.path }}"
+        echo "Ownership set: {{ service_config.owner }}:{{ service_config.owner_group }} on {{ service_config.path }}"
+      ignore_errors: true
+
+    - name: Start homeassistant service
+      shell: |
+        sudo -u {{ service_config.owner }} systemctl --user start {{ service_config.systemd_unit }}
+        echo "Service started (--user): {{ service_config.systemd_unit }}"
+      ignore_errors: true
+
+    - name: Display restore summary
+      debug:
+        msg: |
+          Homeassistant restore completed:
+          - Safety backup: {{ service_config.path }}_backup_{{ restore_timestamp }}
+          - Service: {{ service_config.systemd_unit }}
+          - Owner: {{ service_config.owner }}:{{ service_config.owner_group }}
