@@ -32,15 +32,32 @@
       - run
 
 
-### Container Management Template - Should not touch if exists, otherwise install
-- stat:
-    path: "{{ container_management_polkit_path }}/{{ container_management_polkit }}"
-  register: polkit_rule
+### Container Management Template - Handle Legacy (pkla) vs New (rules)
 
-- name: Add polkit rule for container management for group {{ container_management_group }}
+- name: Check for legacy polkit directory (pkla)
+  stat:
+    path: "/etc/polkit-1/localauthority/50-local.d"
+  register: polkit_legacy_dir
+
+- name: Check for new polkit directory (rules)
+  stat:
+    path: "/etc/polkit-1/rules.d"
+  register: polkit_new_dir
+
+- name: Add legacy polkit rule (pkla)
   template:
-    src: templates/{{ container_management_polkit }}.j2
-    dest: "{{ container_management_polkit_path }}/{{container_management_polkit}}"
+    src: "templates/service-auth.pkla.j2"
+    dest: "/etc/polkit-1/localauthority/50-local.d/service-auth.pkla"
     mode: 0644
     owner: root
     group: root
+  when: polkit_legacy_dir.stat.exists and polkit_legacy_dir.stat.isdir
+
+- name: Add new polkit rule (rules)
+  template:
+    src: "templates/service-auth.rules.j2"
+    dest: "/etc/polkit-1/rules.d/50-service-auth.rules"
+    mode: 0644
+    owner: root
+    group: root
+  when: polkit_new_dir.stat.exists and polkit_new_dir.stat.isdir and (not polkit_legacy_dir.stat.exists or not polkit_legacy_dir.stat.isdir)
