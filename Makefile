@@ -17,7 +17,8 @@ configure:
 	grep newbie hosts
 	grep -i ${hostlist}	hosts
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=newbie -e ansible_ssh_host=${newbie} playbooks/initial-playbook-stage-1.yml || true
-	echo "Sleeping 75 Seconds for SSH to unwind"
+	# Allow SSH sessions and host key changes triggered by stage-1 to fully settle before running stage-2; 75s is empirically sufficient.
+	echo "Sleeping 75 seconds for SSH to unwind before running stage-2 playbook"
 	sleep 75
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-2.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/initial-playbook-stage-3.yml
