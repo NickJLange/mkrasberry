@@ -13,13 +13,14 @@
       become: yes
       become_user: root
 
-    - name: Quick fix - Enable IP forwarding for eth0 and wg0 if they exist
-      shell: |
-        if [ -d /proc/sys/net/ipv4/conf/{{ item }} ]; then
-          sysctl -w net.ipv4.conf.{{ item }}.forwarding=1
-        fi
+    - name: Enable IP forwarding for eth0 and wg0 when present
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.{{ item }}.forwarding"
+        value: "1"
+        state: present
+        reload: yes
       loop:
         - eth0
         - wg0
-      changed_when: false
+      when: item in ansible_facts['interfaces']
 
