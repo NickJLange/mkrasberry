@@ -55,4 +55,21 @@ backup-restore-full:
 	@grep -i ${hostlist} hosts
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/restore-services.yml
 
+gcloud-credentials-stage:
+	@echo "Copying local gcloud credentials to role files directory..."
+	@mkdir -p roles/role-install-gcloud/files
+	cp ~/.config/gcloud/credentials.db roles/role-install-gcloud/files/
+	cp ~/.config/gcloud/access_tokens.db roles/role-install-gcloud/files/
+	cp ~/.config/gcloud/active_config roles/role-install-gcloud/files/
+	cp ~/.config/gcloud/configurations/config_default roles/role-install-gcloud/files/
+	cp ~/.ssh/google_compute_engine roles/role-install-gcloud/files/
+	cp ~/.ssh/google_compute_engine.pub roles/role-install-gcloud/files/
+	@echo "Credentials and SSH keys staged. Run 'make gcloud-credentials-deploy hostlist=hostname' to deploy."
+
+gcloud-credentials-deploy:
+	@test -n "${hostlist}" || { echo "Error: hostlist is required"; exit 1; }
+	@test -f roles/role-install-gcloud/files/credentials.db || { echo "Error: credentials not staged. Run 'make gcloud-credentials-stage' first"; exit 1; }
+	@grep -i ${hostlist} hosts
+	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/gcloud-credentials-deploy.yml
+
 all: install_os post_install
