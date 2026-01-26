@@ -57,6 +57,10 @@ backup-restore-full:
 
 gcloud-credentials-stage:
 	@echo "Copying local gcloud credentials to role files directory..."
+	@# Verify credentials will be gitignored (check in mkrasberry_config submodule where files actually live)
+	@cd mkrasberry_config && git check-ignore -q roles/role-install-gcloud/files/credentials.db 2>/dev/null || { \
+		echo "Error: credential files are not git-ignored in mkrasberry_config. Add to mkrasberry_config/.gitignore before staging secrets."; \
+		exit 1; }
 	@mkdir -p roles/role-install-gcloud/files
 	cp ~/.config/gcloud/credentials.db roles/role-install-gcloud/files/
 	cp ~/.config/gcloud/access_tokens.db roles/role-install-gcloud/files/
@@ -68,7 +72,12 @@ gcloud-credentials-stage:
 
 gcloud-credentials-deploy:
 	@test -n "${hostlist}" || { echo "Error: hostlist is required"; exit 1; }
-	@test -f roles/role-install-gcloud/files/credentials.db || { echo "Error: credentials not staged. Run 'make gcloud-credentials-stage' first"; exit 1; }
+	@test -f roles/role-install-gcloud/files/credentials.db || { echo "Error: credentials.db not staged. Run 'make gcloud-credentials-stage' first"; exit 1; }
+	@test -f roles/role-install-gcloud/files/access_tokens.db || { echo "Error: access_tokens.db not staged."; exit 1; }
+	@test -f roles/role-install-gcloud/files/active_config || { echo "Error: active_config not staged."; exit 1; }
+	@test -f roles/role-install-gcloud/files/config_default || { echo "Error: config_default not staged."; exit 1; }
+	@test -f roles/role-install-gcloud/files/google_compute_engine || { echo "Error: google_compute_engine SSH key not staged."; exit 1; }
+	@test -f roles/role-install-gcloud/files/google_compute_engine.pub || { echo "Error: google_compute_engine.pub not staged."; exit 1; }
 	@grep -i ${hostlist} hosts
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/gcloud-credentials-deploy.yml
 
