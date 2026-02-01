@@ -5,7 +5,7 @@ dependencies: []
 galaxy_info:
   author: Nick Lange
   company: Private
-  description: Configures Raspberry PI wifi
+  description: Configures Raspberry PI wifi and ensures wifi/bluetooth radios are unblocked via rfkill
   license: MIT
   platforms:
   - name: Debian
