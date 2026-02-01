@@ -10,12 +10,28 @@
       apt:
         name:
           - vim
+          - neovim
           - acl
           - ca-certificates
           - cron
         state: present
         force_apt_get: yes
         cache_valid_time: 84600
+    - name: Ensure .ssh directory exists
+      become: true
+      file:
+        path: "/home/{{ local_ssh_user }}/.ssh"
+        state: directory
+        owner: "{{ local_ssh_user }}"
+        group: "{{ local_ssh_user }}"
+        mode: "0700"
+
+    - name: Copy SSH public key to authorized_keys
+      become: true
+      authorized_key:
+        user: "{{ local_ssh_user }}"
+        state: present
+        key: "{{ lookup('file', '/Users/{{ local_ssh_user }}/.ssh/id_rsa_stronger.pub') }}"
     - name: Remove existing symlink
       file:
         path: /etc/localtime
