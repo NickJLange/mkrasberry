@@ -41,6 +41,11 @@
   when:     wpa_supplicant_updated is defined
 #    cron_file: phoneHome_sh
 
+- name: ensure bluetooth is unblocked via rfkill
+  shell: rfkill unblock bluetooth
+  when: wpa_supplicant_updated is defined
+  changed_when: false
+
 
 #- name: configure service for systemd
 #  template:
@@ -61,6 +66,8 @@
 - name: reload the config
   shell: wpa_cli -i wlan0 reconfigure
   when:     wpa_supplicant_updated is defined
+  register: wpa_cli_reconfigure
+  failed_when: false
 #    cron_file: phoneHome_sh
 
 - name: up the wlan0 interface
