@@ -16,12 +16,13 @@ except ImportError as e:
 
 import ansible
 from ansible.plugins.callback import CallbackBase
-from ansible import context
+try:
+    from __main__ import cli
+except ImportError:
+    cli = False
 
 ANSIBLE_ABOVE_28 = False
-if IMPORT_ERROR is None and version.parse(ansible.__version__) >= version.parse(
-    "2.8.0"
-):
+if IMPORT_ERROR is None and version.parse(ansible.__version__) >= version.parse('2.8.0'):
     ANSIBLE_ABOVE_28 = True
     from ansible.context import CLIARGS
 
@@ -29,29 +30,32 @@ DEFAULT_DD_URL = "https://api.datadoghq.com"
 
 
 class CallbackModule(CallbackBase):
+    # Ansible 2.16+ expects callback plugins to define this attribute.
+    # This plugin does not need to receive implicit tasks, so we disable them.
+    wants_implicit_tasks = False
+
     def __init__(self):
         if IMPORT_ERROR is not None:
             self.disabled = True
             print(
-                "Datadog callback disabled because of a dependency problem: {}. "
-                'Please install requirements with "pip install -r requirements.txt"'.format(
-                    IMPORT_ERROR
-                )
+                'Datadog callback disabled because of a dependency problem: {}. '
+                'Please install requirements with "pip install -r requirements.txt"'
+                .format(IMPORT_ERROR)
             )
         else:
             self.disabled = False
             # Set logger level - datadog api and urllib3
-            for log_name in ["requests.packages.urllib3", "datadog.api"]:
+            for log_name in ['requests.packages.urllib3', 'datadog.api']:
                 self._set_logger_level(log_name)
 
         self._playbook_name = None
         self._start_time = time.time()
         self._options = None
-        if IMPORT_ERROR is None and context:
+        if IMPORT_ERROR is None:
             if ANSIBLE_ABOVE_28:
                 self._options = CLIARGS
-            else:
-                self._options = CLIARGS.options
+            elif cli:
+                self._options = cli.options
 
         # self.playbook is set in the `v2_playbook_on_start` callback method
         self.playbook = None
@@ -79,38 +83,30 @@ class CallbackModule(CallbackBase):
                 # on pyyaml < 5.1, there's no FullLoader,
                 # but we can still use SafeLoader
                 loader = yaml.SafeLoader
-            with open(file_path, "r") as conf_file:
+            with open(file_path, 'r') as conf_file:
                 conf_dict = yaml.load(conf_file, Loader=loader)
 
-        api_key = os.environ.get("DATADOG_API_KEY", conf_dict.get("api_key", ""))
-        dd_url = os.environ.get("DATADOG_URL", conf_dict.get("url", ""))
-        dd_site = os.environ.get("DATADOG_SITE", conf_dict.get("site", ""))
+        api_key = os.environ.get('DATADOG_API_KEY', conf_dict.get('api_key', ''))
+        dd_url = os.environ.get('DATADOG_URL', conf_dict.get('url', ''))
+        dd_site = os.environ.get('DATADOG_SITE', conf_dict.get('site', ''))
+        print(f"Using {api_key} for {dd_url} and {dd_site}") 
         return api_key, dd_url, dd_site
 
     # Send event to Datadog
-    def _send_event(
-        self,
-        title,
-        alert_type=None,
-        text=None,
-        tags=None,
-        host=None,
-        event_type=None,
-        event_object=None,
-    ):
+    def _send_event(self, title, alert_type=None, text=None, tags=None, host=None, event_type=None, event_object=None):
         if tags is None:
             tags = []
         tags.extend(self.default_tags)
-        priority = "normal" if alert_type == "error" else "low"
+        priority = 'normal' if alert_type == 'error' else 'low'
         try:
             datadog.api.Event.create(
                 title=title,
-                text=text.replace("@", "(@)"),  # avoid notifying @ mentions
+                text=text.replace('@','(@)'), # avoid notifying @ mentions
                 alert_type=alert_type,
                 priority=priority,
                 tags=tags,
                 host=host,
-                source_type_name="ansible",
+                source_type_name='ansible',
                 event_type=event_type,
                 event_object=event_object,
             )
@@ -120,31 +116,29 @@ class CallbackModule(CallbackBase):
             print(e)
 
     # Send event, aggregated with other task-level events from the same host
-    def send_task_event(self, title, alert_type="info", text="", tags=None, host=None):
-        if getattr(self, "play", None):
+    def send_task_event(self, title, alert_type='info', text='', tags=None, host=None):
+        if getattr(self, 'play', None):
             if tags is None:
                 tags = []
-            tags.append("play:{0}".format(self.play.name))
+            tags.append('play:{0}'.format(self.play.name))
         self._send_event(
             title,
             alert_type=alert_type,
             text=text,
             tags=tags,
             host=host,
-            event_type="config_management.task",
+            event_type='config_management.task',
             event_object=host,
         )
 
     # Send event, aggregated with other playbook-level events from the same playbook and of the same type
-    def send_playbook_event(
-        self, title, alert_type="info", text="", tags=None, event_type=""
-    ):
+    def send_playbook_event(self, title, alert_type='info', text='', tags=None, event_type=''):
         self._send_event(
             title,
             alert_type=alert_type,
             text=text,
             tags=tags,
-            event_type="config_management.run.{0}".format(event_type),
+            event_type='config_management.run.{0}'.format(event_type),
             event_object=self._playbook_name,
         )
 
@@ -176,7 +170,7 @@ class CallbackModule(CallbackBase):
     # Default tags sent with events and metrics
     @property
     def default_tags(self):
-        return ["playbook:{0}".format(self._playbook_name)]
+        return ['playbook:{0}'.format(self._playbook_name)]
 
     @staticmethod
     def pluralize(number, noun):
@@ -187,34 +181,31 @@ class CallbackModule(CallbackBase):
 
     # format helper for event_text
     @staticmethod
-    def format_result(res):
-        msg = "$$$\n{0}\n$$$\n".format(res["msg"]) if res.get("msg") else ""
-        module_name = "undefined"
+    def format_result(result):
+        res = result._result
+        module_name = result._task.action
+        msg = "$$$\n{0}\n$$$\n".format(res['msg']) if res.get('msg') else ""
 
-        if res.get("censored"):
-            event_text = res.get("censored")
-        elif not res.get("invocation"):
+        if res.get('censored'):
+            event_text = res.get('censored')
+        elif not res.get('invocation'):
             event_text = msg
         else:
-            invocation = res["invocation"]
-            module_name = invocation.get("module_name", "undefined")
-            event_text = "$$$\n{0}[{1}]\n$$$\n".format(
-                module_name, invocation.get("module_args", "")
-            )
+            invocation = res['invocation']
+            event_text = "$$$\n{0}[{1}]\n$$$\n".format(module_name, invocation.get('module_args', ''))
             event_text += msg
-            if "module_stdout" in res:
+            if 'stdout' in res:
                 # On Ansible v2, details on internal failures of modules are not reported in the `msg`,
                 # so we have to extract the info differently
                 event_text += "$$$\n{0}\n{1}\n$$$\n".format(
-                    res.get("module_stdout", ""), res.get("module_stderr", "")
-                )
+                    res.get('stdout', ''), res.get('stderr', ''))
 
-        module_name_tag = "module:{0}".format(module_name)
+        module_name_tag = 'module:{0}'.format(module_name)
 
         return event_text, module_name_tag
 
     def get_dd_hostname(self, ansible_hostname):
-        """This function allows providing custom logic that transforms an Ansible
+        """ This function allows providing custom logic that transforms an Ansible
         inventory hostname to a Datadog hostname.
         """
         dd_hostname = ansible_hostname
@@ -222,40 +213,41 @@ class CallbackModule(CallbackBase):
         return dd_hostname
 
     ### Ansible callbacks ###
-    def runner_on_failed(self, host, res, ignore_errors=False):
-        host = self.get_dd_hostname(host)
+    def v2_runner_on_failed(self, result, ignore_errors=False):
+        host = self.get_dd_hostname(result._host.get_name())
         # don't post anything if user asked to ignore errors
         if ignore_errors:
             return
 
-        event_text, module_name_tag = self.format_result(res)
+        event_text, module_name_tag = self.format_result(result)
         self.send_task_event(
             'Ansible task failed on "{0}"'.format(host),
-            alert_type="error",
+            alert_type='error',
             text=event_text,
             tags=[module_name_tag],
             host=host,
         )
 
-    def runner_on_ok(self, host, res):
-        host = self.get_dd_hostname(host)
+    def v2_runner_on_ok(self, result):
+        host = self.get_dd_hostname(result._host.get_name())
         # Only send an event when the task has changed on the host
-        if res.get("changed"):
-            event_text, module_name_tag = self.format_result(res)
+        if result._result.get('changed'):
+            event_text, module_name_tag = self.format_result(result)
             self.send_task_event(
                 'Ansible task changed on "{0}"'.format(host),
-                alert_type="success",
+                alert_type='success',
                 text=event_text,
                 tags=[module_name_tag],
                 host=host,
             )
 
-    def runner_on_unreachable(self, host, res):
-        host = self.get_dd_hostname(host)
+    def v2_runner_on_unreachable(self, result):
+        res = result._result
+        host = self.get_dd_hostname(result._host.get_name())
         event_text = "\n$$$\n{0}\n$$$\n".format(res)
         self.send_task_event(
             'Ansible failed on unreachable host "{0}"'.format(host),
-            alert_type="error",
+            alert_type='error',
             text=event_text,
             host=host,
         )
@@ -267,23 +259,18 @@ class CallbackModule(CallbackBase):
 
         playbook_file_name = self.playbook._file_name
         if ANSIBLE_ABOVE_28:
-            inventory = self._options["inventory"]
+            inventory = self._options['inventory']
         else:
             inventory = self._options.inventory
 
         self.start_timer()
 
         # Set the playbook name from its filename
-        self._playbook_name, _ = os.path.splitext(os.path.basename(playbook_file_name))
+        self._playbook_name, _ = os.path.splitext(
+            os.path.basename(playbook_file_name))
         if isinstance(inventory, (list, tuple)):
-            inventory = ",".join(inventory)
-        self._inventory_name = ",".join(
-            [
-                os.path.basename(os.path.realpath(name))
-                for name in inventory.split(",")
-                if name
-            ]
-        )
+            inventory = ','.join(inventory)
+        self._inventory_name = ','.join([os.path.basename(os.path.realpath(name)) for name in inventory.split(',') if name])
 
     def v2_playbook_on_play_start(self, play):
         # On Ansible v2, Ansible doesn't set `self.play` automatically
@@ -292,43 +279,32 @@ class CallbackModule(CallbackBase):
             return
 
         # Read config and hostvars
-        config_path = os.environ.get(
-            "ANSIBLE_DATADOG_CALLBACK_CONF_FILE",
-            os.path.join(os.path.dirname(__file__), "datadog_callback.yml"),
-        )
+        config_path = os.environ.get('ANSIBLE_DATADOG_CALLBACK_CONF_FILE', os.path.join(os.path.dirname(__file__), "datadog_callback.yml"))
         api_key, dd_url, dd_site = self._load_conf(config_path)
 
         # If there is no api key defined in config file, try to get it from hostvars
-        if api_key == "":
+        if api_key == '':
             hostvars = self.play.get_variable_manager()._hostvars
 
             if not hostvars:
-                print(
-                    "No api_key found in the config file ({0}) and hostvars aren't set: disabling Datadog callback plugin".format(
-                        config_path
-                    )
-                )
+                print("No api_key found in the config file ({0}) and hostvars aren't set: disabling Datadog callback plugin".format(config_path))
                 self.disabled = True
             else:
                 try:
-                    api_key = hostvars["localhost"]["datadog_api_key"]
+                    api_key = hostvars['localhost']['datadog_api_key']
                     if not dd_url:
-                        dd_url = hostvars["localhost"].get("datadog_url")
+                        dd_url = hostvars['localhost'].get('datadog_url')
                     if not dd_site:
-                        dd_site = hostvars["localhost"].get("datadog_site")
+                        dd_site = hostvars['localhost'].get('datadog_site')
                 except Exception as e:
-                    print(
-                        'No "api_key" found in the config file ({0}) and "datadog_api_key" is not set in the hostvars: disabling Datadog callback plugin'.format(
-                            config_path
-                        )
-                    )
+                    print('No "api_key" found in the config file ({0}) and "datadog_api_key" is not set in the hostvars: disabling Datadog callback plugin'.format(config_path))
                     self.disabled = True
 
         if not dd_url:
             if dd_site:
-                dd_url = "https://api." + dd_site
+                dd_url = "https://api."+ dd_site
             else:
-                dd_url = DEFAULT_DD_URL  # default to Datadog US
+                dd_url = DEFAULT_DD_URL # default to Datadog US
 
         # Set up API client and send a start event
         if not self.disabled:
@@ -339,9 +315,8 @@ class CallbackModule(CallbackBase):
                     self.play.name,
                     self._playbook_name,
                     getpass.getuser(),
-                    self._inventory_name,
-                ),
-                event_type="start",
+                    self._inventory_name),
+                event_type='start',
             )
 
     def playbook_on_stats(self, stats):
@@ -353,50 +328,49 @@ class CallbackModule(CallbackBase):
             host = self.get_dd_hostname(host)
             # Aggregations for the event text
             summary = stats.summarize(host)
-            total_tasks += sum([summary["ok"], summary["failures"], summary["skipped"]])
-            total_updated += summary["changed"]
-            errors = sum([summary["failures"], summary["unreachable"]])
+            total_tasks += sum([summary['ok'], summary['failures'], summary['skipped']])
+            total_updated += summary['changed']
+            errors = sum([summary['failures'], summary['unreachable']])
             if errors > 0:
-                error_hosts.append((host, summary["failures"], summary["unreachable"]))
+                error_hosts.append((host, summary['failures'], summary['unreachable']))
                 total_errors += errors
 
             # Send metrics for this host
             for metric, value in summary.items():
-                self.send_metric("task.{0}".format(metric), value, host=host)
+                self.send_metric('task.{0}'.format(metric), value, host=host)
 
         # Send playbook elapsed time
-        self.send_metric("elapsed_time", self.get_elapsed_time())
+        self.send_metric('elapsed_time', self.get_elapsed_time())
 
         # Generate basic "Completed" event
         event_title = 'Ansible playbook "{0}" completed in {1}'.format(
-            self._playbook_name, self.pluralize(int(self.get_elapsed_time()), "second")
-        )
-        event_text = (
-            "Ansible updated {0} out of {1} total, on {2}. {3} occurred.".format(
-                self.pluralize(total_updated, "task"),
-                self.pluralize(total_tasks, "task"),
-                self.pluralize(len(stats.processed), "host"),
-                self.pluralize(total_errors, "error"),
-            )
-        )
-        alert_type = "success"
+            self._playbook_name,
+            self.pluralize(int(self.get_elapsed_time()), 'second'))
+        event_text = 'Ansible updated {0} out of {1} total, on {2}. {3} occurred.'.format(
+            self.pluralize(total_updated, 'task'),
+            self.pluralize(total_tasks, 'task'),
+            self.pluralize(len(stats.processed), 'host'),
+            self.pluralize(total_errors, 'error'))
+        alert_type = 'success'
 
         # Add info to event if errors occurred
         if total_errors > 0:
-            alert_type = "error"
-            event_title += " with errors"
+            alert_type = 'error'
+            event_title += ' with errors'
             event_text += "\nErrors occurred on the following hosts:\n%%%\n"
             for host, failures, unreachable in error_hosts:
                 event_text += "- `{0}` (failure: {1}, unreachable: {2})\n".format(
-                    host, failures, unreachable
-                )
+                    host,
+                    failures,
+                    unreachable)
             event_text += "\n%%%\n"
         else:
-            event_title += " successfully"
+            event_title += ' successfully'
 
         self.send_playbook_event(
             event_title,
             alert_type=alert_type,
             text=event_text,
-            event_type="end",
+            event_type='end',
         )
+

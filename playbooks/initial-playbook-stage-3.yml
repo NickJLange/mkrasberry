@@ -10,5 +10,5 @@
       become: yes
       become_user: "{{ local_ssh_user }}"
       when: phoneHomePort is defined
-    - role: syslog-configure-servers
-      become: yes
+#    - role: syslog-configure-servers
+#      become: yes

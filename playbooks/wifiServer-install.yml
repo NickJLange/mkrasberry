@@ -17,6 +17,9 @@
           - wifi_server_wpa_passkey is defined
           - wifi_server_setup_channel is defined
         fail_msg: "End of days man"
+        # May not need
+        container_user: "root"
+        container_group: "root"
       tags: key_vars
   tasks:
     - name: Wifi Server Install

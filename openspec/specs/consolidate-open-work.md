@@ -79,3 +79,39 @@ Merge all open PRs, branches, and submodule updates into master to clean up repo
 3. ~~Should stale local branches be deleted?~~ **RESOLVED**: Keep & rebase `fix/msmtp-conditional-and-loop-error`; delete others
 
 ## Status: APPROVED — Ready for Implementation
+
+---
+
+## Wifi and Bluetooth rfkill Unblocking for wifiClientSetup
+
+### Goal
+Ensure that when the wifiClientSetup role configures wifi on a Raspberry Pi, it also guarantees that both wifi and bluetooth are unblocked via rfkill, and that the role documentation clearly advertises this behavior.
+
+### Implemented Changes
+- Updated `roles/wifiClientSetup/tasks/install.yml` to add a task that runs `rfkill unblock bluetooth` alongside the existing `rfkill unblock wifi` behavior.
+- Kept the new bluetooth task conditioned on `wpa_supplicant_updated` to align with the existing rfkill unblock wifi task.
+- Updated `roles/wifiClientSetup/meta/main.yml` role description to indicate that it configures wifi and ensures that wifi/bluetooth radios are unblocked via rfkill.
+
+### Verification
+- Run the `wifiClientSetup` role against a Raspberry Pi host where bluetooth is currently soft-blocked by rfkill.
+  - Before run: `rfkill list` should show bluetooth as `Soft blocked: yes`.
+  - After run: `rfkill list` should show both wifi and bluetooth as `Soft blocked: no`.
+- Confirm that the role metadata now describes both wifi configuration and enabling wifi/bluetooth via rfkill.
+
+---
+
+## wifiClientSetup wpa_cli reload robustness
+
+### Goal
+Make the `wifiClientSetup` role resilient when reloading the wifi configuration with `wpa_cli -i wlan0 reconfigure` so that a missing control socket (or similar transient issues) do not cause the playbook to fail on hosts like terraTau.
+
+### Implemented Changes
+- Updated `roles/wifiClientSetup/tasks/install.yml` `reload the config` task so it:
+  - Continues to run only when `wpa_supplicant_updated` is defined.
+  - Registers the result of `wpa_cli -i wlan0 reconfigure`.
+  - Treats non-zero return codes as non-fatal (using `failed_when: false`).
+
+### Verification
+- Run the same targeted wifiClientSetup test playbook against terraTau used previously.
+  - Confirm that the play completes successfully even if `wpa_cli` reports it cannot connect to the control socket.
+  - Verify that the new bluetooth rfkill task still runs and that wifi/bluetooth are unblocked as expected.
