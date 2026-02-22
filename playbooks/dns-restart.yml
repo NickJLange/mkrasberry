@@ -1,0 +1,62 @@
+---
+# DNS Restart Playbook
+# Restarts pihole container on target hosts and collects diagnostics on failure
+#
+# Usage:
+#   # Restart all DNS servers
+#   ansible-playbook -i mkrasberry_config/hosts -e hostlist=pihole playbooks/dns-restart.yml
+#
+#   # Restart specific region
+#   ansible-playbook -i mkrasberry_config/hosts -e hostlist=wisconsin_linux playbooks/dns-restart.yml
+#   ansible-playbook -i mkrasberry_config/hosts -e hostlist=newyork_linux playbooks/dns-restart.yml
+#   ansible-playbook -i mkrasberry_config/hosts -e hostlist=miyagi_linux playbooks/dns-restart.yml
+#
+#   # Restart single server
+#   ansible-playbook -i mkrasberry_config/hosts -e hostlist=marsAlpha playbooks/dns-restart.yml
+#
+# Diagnostics are saved to logs/ directory on failure
+
+- hosts: "{{ hostlist | default('pihole') }}"
+  become: true
+  vars:
+    pihole_user: "pihole"
+  tasks:
+    - name: Check pihole container status
+      command: podman ps --filter name=pihole
+      register: pihole_status
+      changed_when: false
+
+    - name: Restart pihole service
+      command: sudo -u {{ pihole_user }} pihole restartdns
+      register: restart_result
+      failed_when: restart_result.rc not in [0, 3]
+
+    - name: Verify restart succeeded
+      fail:
+        msg: "Pihole restart failed with rc={{ restart_result.rc }}"
+      when: restart_result.rc not in [0, 3]
+
+    - name: Display restart result
+      debug:
+        msg: "Pihole restarted successfully on {{ inventory_hostname }}"
+
+    - name: Collect summary diagnostics on failure
+      command: sudo -u {{ pihole_user }} pihole -d -a
+      register: pihole_diag
+      failed_when: false
+      when: restart_result is failed
+
+    - name: Save diagnostics to remote temp file
+      copy:
+        content: "{{ pihole_diag.stdout }}"
+        dest: "/tmp/pihole-diag-{{ ansible_date_time.epoch }}.log"
+      when: pihole_diag is defined and pihole_diag.stdout is defined
+      changed_when: true
+
+    - name: Fetch diagnostics to local logs directory
+      fetch:
+        src: "/tmp/pihole-diag-{{ ansible_date_time.epoch }}.log"
+        dest: "logs/pihole-diag-{{ inventory_hostname }}-{{ ansible_date_time.epoch }}.log"
+        flat: yes
+      when: pihole_diag is defined and pihole_diag.stdout is defined
+      failed_when: false

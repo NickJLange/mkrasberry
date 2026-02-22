@@ -9,6 +9,7 @@
           - tcpdump
           - jq
           - podman
+          - fuse-overlayfs
         state: present
         force_apt_get: yes
         cache_valid_time: 84600
@@ -43,6 +44,24 @@
         state: present
         insertafter: EOF
         line: if [ $(id -u) != 0 ]; then export XDG_RUNTIME_DIR=/var/run/user/$(id -u)/; fi
+
+    - name: Ensure Podman storage driver is overlay
+      ini_file:
+        path: /etc/containers/storage.conf
+        section: storage
+        option: driver
+        value: '"overlay"'
+        mode: '0644'
+        create: yes
+
+    - name: Ensure Podman graphroot is set
+      ini_file:
+        path: /etc/containers/storage.conf
+        section: storage
+        option: graphroot
+        value: '"/var/lib/containers/storage"'
+        mode: '0644'
+        create: yes
 #        git config --global alias.co checkout
 #        git config --global alias.br branch
 #        git config --global alias.ci commit
