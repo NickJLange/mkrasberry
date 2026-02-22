@@ -1,0 +1,20 @@
+{
+  "name": "DNS Server Down - CRITICAL - PageDuty",
+  "type": "query alert",
+  "query": "max(last_15m):max:pihole.dns_up{*} by {server} < 1",
+  "message": "CRITICAL: DNS server {{server.name}} has been down for 15 minutes. Triggering PagerDuty.\n\n@pagerduty",
+  "tags": ["dns", "pihole", "critical"],
+  "options": {
+    "notify_audit": false,
+    "locked": false,
+    "require_full_window": true,
+    "notify_no_data": false,
+    "renotify_interval": 15,
+    "evaluation_delay": 30,
+    "new_group_delay": 30,
+    "include_tags": false,
+    "thresholds": {
+      "critical": 1
+    }
+  }
+}
