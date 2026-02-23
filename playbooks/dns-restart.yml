@@ -31,6 +31,12 @@
       register: restart_result
       failed_when: restart_result.rc != 0
 
+    - name: Restart unbound service
+      systemd:
+        name: unbound
+        state: restarted
+      become: true
+
     - name: Verify restart succeeded
       fail:
         msg: "Pihole restart failed with rc={{ restart_result.rc }}"
