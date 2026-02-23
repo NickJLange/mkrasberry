@@ -22,7 +22,7 @@
     pihole_user: "pihole"
   tasks:
     - name: Check pihole container status
-      command: podman ps --filter name=pihole
+      command: sudo -u {{ pihole_user }} podman ps --filter name=pihole
       register: pihole_status
       changed_when: false
 
