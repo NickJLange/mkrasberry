@@ -27,7 +27,7 @@
       changed_when: false
 
     - name: Restart pihole service
-      command: sudo -u {{ pihole_user }} pihole restartdns
+      command: sudo -u {{ pihole_user }} podman exec pihole pihole restartdns
       register: restart_result
       failed_when: restart_result.rc not in [0, 3]
 
@@ -41,7 +41,7 @@
         msg: "Pihole restarted successfully on {{ inventory_hostname }}"
 
     - name: Collect summary diagnostics on failure
-      command: sudo -u {{ pihole_user }} pihole -d -a
+      command: sudo -u {{ pihole_user }} podman exec pihole pihole -d -a
       register: pihole_diag
       failed_when: false
       when: restart_result is failed
