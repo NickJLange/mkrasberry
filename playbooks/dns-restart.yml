@@ -27,9 +27,9 @@
       changed_when: false
 
     - name: Restart pihole service
-      command: sudo -u {{ pihole_user }} podman exec pihole pihole restartdns
+      command: sudo -u {{ pihole_user }} sh -c "podman stop pihole && podman start pihole"
       register: restart_result
-      failed_when: restart_result.rc not in [0, 3]
+      failed_when: restart_result.rc != 0
 
     - name: Verify restart succeeded
       fail:
