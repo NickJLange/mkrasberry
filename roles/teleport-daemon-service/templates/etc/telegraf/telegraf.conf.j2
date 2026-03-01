@@ -74,9 +74,20 @@
   hostname = ""
   ## If set to true, do no set the "host" tag in the telegraf agent.
   omit_hostname = false
-[[outputs.datadog]]
-apikey= "{{ datadog_telegraf_api_key }}"
-url = "https://app.datadoghq.com/api/v1/series"
+# OpenTelemetry OTLP output to Datadog
+# Sends metrics in OpenTelemetry format to Datadog's OTLP intake
+# See: https://docs.datadoghq.com/opentelemetry/
+[[outputs.otlp]]
+  ## Datadog OTLP endpoint (US)
+  endpoint = "https://otlp.datadoghq.com:443"
+  
+  ## Optional: configure headers for authentication
+  [outputs.otlp.headers]
+    dd-api-key = "{{ datadog_telegraf_api_key }}"
+
+# [[outputs.datadog]]
+# apikey= "{{ datadog_telegraf_api_key }}"
+# url = "https://app.datadoghq.com/api/v1/series"
 
   ## The URLs of the InfluxDB cluster nodes.
   ##
