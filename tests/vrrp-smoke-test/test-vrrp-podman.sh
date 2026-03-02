@@ -6,12 +6,14 @@ set -e
 # Safe to run on production servers
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Generate valid IP octets (0-255)
+THIRD_OCTET=$((RANDOM % 256))
 NETWORK_NAME="vrrp-test-net-${RANDOM}"
-SUBNET="10.99.${RANDOM}.0/24"
-GATEWAY="10.99.${RANDOM}.1"
-VIP="10.99.${RANDOM}.2"
-MASTER_IP="10.99.${RANDOM}.10"
-BACKUP_IP="10.99.${RANDOM}.11"
+SUBNET="10.99.${THIRD_OCTET}.0/24"
+GATEWAY="10.99.${THIRD_OCTET}.1"
+VIP="10.99.${THIRD_OCTET}.2"
+MASTER_IP="10.99.${THIRD_OCTET}.10"
+BACKUP_IP="10.99.${THIRD_OCTET}.11"
 
 # Colors
 RED='\033[0;31m'
