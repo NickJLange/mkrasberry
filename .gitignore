@@ -165,3 +165,11 @@ roles/role-install-gcloud/files/active_config
 roles/role-install-gcloud/files/config_default
 roles/role-install-gcloud/files/google_compute_engine
 roles/role-install-gcloud/files/google_compute_engine.pub
+
+# AI agent tooling directories
+.agent/
+.claude/
+.gemini/
+.kilocode/
+.opencode/
+.beads/

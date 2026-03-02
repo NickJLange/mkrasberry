@@ -1,165 +1,79 @@
-# AGENTS.md
+# Engineering Preferences and Review Guidelines
 
-> [!IMPORTANT]
-> This project follows the official [AI Agent Standards](file:///Users/njl/dev/standards/README.md). All agents MUST adhere to the [Spec-Driven Development workflow](file:///Users/njl/dev/standards/AGENT_WORKFLOW.md) for non-trivial tasks.
+Review this plan thoroughly before making any code changes. For every issue or recommendation, explain the concrete tradeoffs, give me an opinionated recommendation, and ask for my input before assuming a direction.
 
-This file provides guidance to AI Agents (Claude, Gemini, etc.) when working with code in this repository.
+## Engineering Preferences
 
-## Project Overview
+These preferences guide all recommendations and implementations:
 
-mkrasberry is a Raspberry Pi infrastructure automation project that uses Ansible to deploy and manage a distributed network of Raspberry Pi devices across multiple geographic locations (New York, Wisconsin, Japan/Miyagi). The project creates a homogeneous, containerized infrastructure running services like DNS filtering, home automation, VPN, monitoring, and logging.
+* **DRY is about knowledge, not just text** - Flag logic duplication aggressively, but tolerate structural duplication if sharing it creates premature coupling (WET is better than the wrong abstraction).
+* **Well-tested code is non-negotiable** - Test behavior, not implementation details. I prefer redundant coverage over missing edge cases, but ensure tests are resilient to refactoring.
+* **Target "Engineered Enough"** - Handle current requirements + immediate edge cases. **Apply YAGNI**: do not build for hypothetical future use cases. Abstract only when you see the pattern for the third time (Rule of Three).
+* **Err on the side of handling more edge cases, not fewer** - thoughtfulness > speed.
+* **Bias toward explicit over clever.**
 
-## Current Focus / Active Tasks
+---
 
-The following Jira tasks are currently prioritizing development in this repository:
+## Review Framework
 
-### [HOMETECH-29] Zigbee Device Monitoring
-- **Goal**: Implement alerting for Zigbee IoT devices (battery < 25%, no check-in > 24h).
-- **Relevant Code**:
-    - `roles/homeassistant.container`: Source of Zigbee device data (via ZHA/Zigbee2MQTT integration).
-    - `roles/telegraf-container-service`: Metrics collection to be sent to Datadog.
-    - `roles/nodered.container`: Potential automation logic for status checks.
-    - `roles/mosquitto.container`: MQTT broker for device messages.
+### 1. Architecture review
+Evaluate:
+* Overall system design and component boundaries.
+* Dependency graph and coupling concerns.
+* Data flow patterns and potential bottlenecks.
+* Scaling characteristics and single points of failure.
+* Security architecture (auth, data access, API boundaries).
 
-### [HOMETECH-17] SSH Lockdown & User Access
-- **Goal**: Lock down SSH ports, validate local accounts, and strictly control user access.
-- **Relevant Code**:
-    - `roles/fix_sudoers`: User permission management.
-    - `roles/ansible-ip_defense_shield`: Firewall rules (iptables/nftables) for SSH port locking.
-    - `roles/podmanSetupRaspberryPi`: Local user setup for container management.
-    - `playbooks/initial-playbook-stage-*.yml`: Base system configuration rules.
+### 2. Code quality review
+Evaluate:
+* Code organization and module structure.
+* DRY violations - be aggressive here.
+* Error handling patterns and missing edge cases (call these out explicitly).
+* Technical debt hotspots.
+* Areas that are over-engineered or under-engineered relative to my preferences.
 
-## Architecture
+### 3. Test review
+Evaluate:
+* Test coverage gaps (unit, integration, e2e).
+* Test quality and assertion strength.
+* Missing edge case coverage - be thorough.
+* Untested failure modes and error paths.
 
-The project follows an **Infrastructure as Code (IaC)** approach with:
-- **Multi-stage deployment**: Device initialization through 5 sequential playbook stages
-- **Container-first architecture**: All services run in Podman containers
-- **Geographic distribution**: Three primary locations with centralized management
-- **Service-oriented design**: Modular Ansible roles for different services
-- **Centralized monitoring**: Datadog and Telegraf integration
+### 4. Performance review
+Evaluate:
+* N+1 queries and database access patterns.
+* Memory-usage concerns.
+* Caching opportunities.
+* Slow or high-complexity code paths.
 
-## Key Commands
+---
 
-### Image Building and Device Provisioning
-```bash
-make build_image                    # Build customized Raspberry Pi OS images
-make install_os TARGETDISK=disk2    # Flash OS images to SD cards
-make post                          # Post-installation configuration
-make configure hostlist=hostname    # Full device configuration pipeline
-make configure_dns hostlist=hostname # DNS-specific configuration
-```
+## Issue and Option Format
 
-### Manual Ansible Execution
-```bash
-# Stage-by-stage deployment
-ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=hostname playbooks/initial-playbook-stage-1.yml
-ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=hostname playbooks/initial-playbook-stage-2.yml
-# ... continues through stage-5
+For every specific issue (bug, smell, design concern, or risk):
 
-# Service-specific deployments
-ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=hostname playbooks/pihole-install.yml
-ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=hostname playbooks/syslog-container.yml
-```
+1. **Describe the problem concretely**, with file and line references.
+2. **Present 2-3 options**, including "do nothing" where that's reasonable.
+3. **For each option**, specify: implementation effort, risk, impact on other code, and maintenance burden.
+4. **Give me your recommended option and why**, mapped to my preferences above.
+5. **Then explicitly ask whether I agree or want to choose a different direction before proceeding.**
 
-### Host IP Override
-Use `host_ip_override` variable to target specific IP addresses:
-```bash
-make configure hostlist=hostname host_ip_override=192.168.1.100
-```
+---
 
-### Data Backup and Restore
-Before reflashing devices, backup service configuration directories:
-```bash
-make backup-create hostlist=hostname          # Create tarballs on remote /tmp
-make backup-fetch hostlist=hostname           # Fetch tarballs to local backups/
-make backup-restore hostlist=hostname         # Restore tarballs to remote /tmp
-```
+## Workflow and Interaction
 
-**Backup Operations:**
-- **Create**: `playbooks/backup-services.yml` - Creates gzip tarballs for:
-  - `/etc/wireguard`
-  - `/usr/local/mosquitto`
-  - `/usr/local/homebridge`
-  - `/usr/local/homeassistant`
-  - `/usr/local/pihole`
-  - Files placed in `/tmp` with 0644 permissions, skips missing directories
-- **Fetch**: `scripts/backup-fetch.sh` - Copies tarballs from remote `/tmp` to `backups/$hostname/$(date +%Y-%m-%d)/`
-- **Restore**: `scripts/backup-restore.sh` - Copies tarballs from `backups/$hostname/` back to remote `/tmp/`
+* **Do not assume my priorities on timeline or scale.**
+* **After each section, pause and ask for my feedback before moving on.**
 
-## Directory Structure
+### BEFORE YOU START:
+Ask if I want one of two options:
+1. **BIG CHANGE**: Work through this interactively, one section at a time (Architecture → Code Quality → Tests → Performance) with at most 4 top issues in each section.
+2. **SMALL CHANGE**: Work through interactively ONE question per review section.
 
-- **`playbooks/`**: Main Ansible playbooks for different deployment scenarios
-  - `initial-playbook-stage-*.yml`: Multi-stage device initialization
-  - Service-specific playbooks (pihole, homeassistant, wireguard, etc.)
-  - `backup-services.yml`: Create tarballs of service config directories
-- **`scripts/`**: Utility scripts for common operations
-  - `backup-fetch.sh`: Fetch backups from remote hosts
-  - `backup-restore.sh`: Restore backups to remote hosts
-- **`roles/`**: Reusable Ansible roles organized by service type
-  - Container roles: `*.container` (pihole.container, homeassistant.container, etc.)
-  - Infrastructure roles: wireguard, telegraf, security components
-  - System roles: podman setup, locales, monitoring
-- **`group_vars/` & `host_vars/`**: Ansible inventory configuration by geography and service
-- **`images/`**: Base Raspberry Pi OS images
-- **`build_images/`**: Output directory for customized OS images
-
-## Container Role Architecture
-
-Container roles follow a standardized pattern:
-- **Podman validation**: Check for Podman installation
-- **User management**: Create service users and groups
-- **Installation tasks**: Container deployment and configuration
-- **Service templates**: Systemd service files for container management
-- **Configuration templates**: Application-specific config files
-
-### Example Container Role Structure
-```
-roles/service.container/
-├── tasks/
-│   ├── main.yml        # Entry point with validation
-│   ├── install.yml     # Container deployment
-│   └── config.yml      # Configuration management
-├── templates/
-│   ├── container.service.j2  # Systemd service template
-│   └── config.conf.j2        # Application config template
-└── defaults/main.yml   # Default variables
-```
-
-## Geographic Network Architecture
-
-- **New York** (192.168.100.x): Primary location with full service stack
-- **Wisconsin** (192.168.20.x): Secondary location
-- **Japan/Miyagi** (192.168.3.x): Remote location
-
-## Key Services Deployed
-
-- **Pi-hole**: DNS filtering and ad blocking
-- **Home Assistant**: Home automation platform
-- **WireGuard**: VPN connectivity
-- **Node-RED**: IoT flow programming
-- **Telegraf**: Metrics collection
-- **Vault**: Secrets management
-- **Syslog**: Centralized logging
-
-## Development Notes
-
-- **No formal testing framework**: Testing is primarily manual/integration-based
-- **Podman over Docker**: All containerization uses Podman
-- **SSH agent dependency**: Some operations require ssh-agent to be running
-- **Multi-stage initialization**: Device setup requires sequential playbook execution
-- **IP override capability**: Use `host_ip_override` for targeting specific addresses during setup
-
-## Known Issues
-
-From README.md:
-- TODO: Use `hosts: "{{ansibleTarget}}"` from CLI with `-e` instead of hardcoded targets
-- TODO: Implement ssh-agent on run
-
-## Common Patterns
-
-When working with container roles:
-1. Always validate Podman installation first
-2. Use standardized user/group creation patterns
-3. Follow the template structure for systemd services
-4. Implement proper variable validation in main.yml
-5. Use consistent naming conventions: `container_*` variables for generic settings, service-specific variables for application config
+### FOR EACH STAGE OF REVIEW:
+* Output the explanation and pros and cons of each stage's questions.
+* Provide your opinionated recommendation and why.
+* Use `AskUserQuestion` (or equivalent tool) to get confirmation.
+* **NUMBER issues** (1, 2, 3...) and then give **LETTERS for options** (A, B, C...).
+* When asking for selection, make sure each option clearly labels the issue NUMBER and option LETTER.
+* **The recommended option must always be the 1st option.**

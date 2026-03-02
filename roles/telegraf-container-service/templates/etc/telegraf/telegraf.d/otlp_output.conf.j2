@@ -1,0 +1,5 @@
+# Datadog output with OpenTelemetry format
+# This sends metrics to Datadog's OTLP intake
+[[outputs.datadog]]
+  apikey = "{{ datadog_telegraf_api_key }}"
+  url = "https://otlp.datadoghq.com/api/v1/series"
