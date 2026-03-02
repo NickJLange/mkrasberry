@@ -1,56 +1,90 @@
 # VRRP Smoke Tests
 
-Rootless VRRP testing using Linux namespaces.
+Containerized VRRP testing using Podman with network isolation.
 
 ## Quick Start
 
 ```bash
 cd tests/vrrp-smoke-test
 
-# Fast syntax check
+# Fast syntax check (if keepalived is installed)
 ./test-configs-only.sh
 
-# Full failover test (requires keepalived installed)
+# Full failover test with Podman containers (RECOMMENDED - network isolated)
+./test-vrrp-podman.sh
+
+# Rootless test with unshare (alternative, less isolated)
 ./test-vrrp-unshare.sh
 ```
 
 ## Requirements
 
-- Linux with user namespace support (`/proc/sys/kernel/unprivileged_userns_clone` = 1)
-- `keepalived` binary installed
-- `unshare` from util-linux
-- `ip` command (iproute2)
+- Podman installed and configured
+- Linux kernel with network namespace support
+- Container capabilities: NET_ADMIN, NET_RAW
 
-## How It Works
+## How It Works (Podman Mode)
 
-Uses `unshare --user --map-root-user` to create isolated namespaces where:
-- Current user is mapped to root inside namespace
-- keepalived runs with necessary "root" permissions
-- VRRP communicates via unicast on loopback interfaces (127.99.0.x)
-- No privileged network operations required on host
+The `test-vrrp-podman.sh` script creates:
+1. Isolated Podman bridge network (random 10.99.x.x/24 subnet)
+2. Two Alpine-based keepalived containers
+3. VRRP communication via unicast within isolated network
+4. Complete cleanup after tests
 
-## Limitations
+**Safety Features:**
+- Randomized subnet to avoid conflicts with production (192.168.x.x)
+- Isolated bridge network (no host network access)
+- Containers run with minimal required capabilities
+- Automatic cleanup on exit (containers, network, images)
 
-- Uses unicast instead of multicast (VRRP still works)
-- Cannot test actual VIP movement on real interfaces
-- Recovery/preemption test is simplified (backup stays master)
+## Test Modes
+
+### 1. Podman Mode (test-vrrp-podman.sh) - RECOMMENDED
+- **Pros:** Full network isolation, runs as regular user, safe for production servers
+- **Cons:** Requires Podman, slightly slower (container startup)
+- **Best for:** Testing on lunarBeacon or other production-adjacent systems
+
+### 2. Unshare Mode (test-vrrp-unshare.sh) - Alternative
+- **Pros:** No container runtime needed, faster startup
+- **Cons:** Runs on host network namespace (less isolated), requires user namespace support
+- **Best for:** Development systems, quick syntax checks
+
+### 3. Config Only (test-configs-only.sh) - Validation
+- **Pros:** Fastest, no runtime requirements beyond keepalived binary
+- **Cons:** Only validates syntax, no runtime behavior testing
+- **Best for:** CI/CD pipelines, pre-deployment checks
+
+## Production Safety Checklist
+
+When running on lunarBeacon or production systems:
+
+- [ ] Verify test subnet doesn't conflict with production (192.168.x.x)
+- [ ] Confirm Podman is using bridge network (not host networking)
+- [ ] Check no test containers bind to port 53
+- [ ] Ensure cleanup runs even on test failure
+- [ ] Monitor production DNS during test (`dig @192.168.100.112 google.com`)
 
 ## Production Config Testing
 
-To test actual production configs:
+To validate actual production configs:
 
 1. Copy configs from archive:
    ```bash
    cp openspec/changes/archive/2026-03-01-dns-keepalived-analysis/specs/dns-ha-analysis/*.conf tmp/
    ```
 
-2. Modify for testing:
-   - Change Virtual Router IDs to 99
-   - Change VIPs to 127.99.0.2
-   - Change interfaces to 'lo'
-   - Add unicast configuration
-
-3. Run validation:
+2. Run validation in container:
    ```bash
-   KEEPALIVED_BIN=/usr/sbin/keepalived ./test-vrrp-unshare.sh
+   podman run --rm -v ./tmp:/configs:ro alpine/keepalived keepalived -t -f /configs/production.conf
    ```
+
+## Troubleshooting
+
+**Issue:** "podman: command not found"  
+**Fix:** Install Podman: `sudo apt-get install podman` (Ubuntu/Debian)
+
+**Issue:** Containers can't communicate  
+**Fix:** Check firewall rules for bridge networks: `sudo iptables -L -v -n | grep FORWARD`
+
+**Issue:** "network is already allocated"  
+**Fix:** Remove old networks: `podman network prune`
