@@ -25,3 +25,12 @@
     owner: "{{container_user}}"
     group: "{{container_group}}"
   when: "telegraf_metrics_iot is defined"
+
+- name: copy dns monitoring config into place
+  template:
+    src: templates/etc/telegraf/telegraf.d/dns-monitoring.conf.j2
+    dest: "{{ container_prefix }}/etc/telegraf.d/dns-monitoring.conf"
+    mode: 0644
+    owner: "{{container_user}}"
+    group: "{{container_group}}"
+  when: "telegraf_dns_monitoring_enabled | default(true)"
