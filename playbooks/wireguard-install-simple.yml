@@ -13,14 +13,24 @@
       become: yes
       become_user: root
 
-    - name: Enable IP forwarding for eth0 and wg0 when present
+    - name: Enable global IP forwarding
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+        sysctl_file: /etc/sysctl.d/99-wireguard.conf
+        reload: yes
+
+    - name: Enable per-interface IP forwarding for WireGuard interfaces
       ansible.posix.sysctl:
         name: "net.ipv4.conf.{{ item }}.forwarding"
         value: "1"
         state: present
+        sysctl_file: /etc/sysctl.d/99-wireguard.conf
         reload: yes
       loop:
         - eth0
         - wg0
+        - wg1
       when: item in ansible_facts['interfaces']
 
