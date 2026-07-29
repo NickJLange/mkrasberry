@@ -1,0 +1,21 @@
+{
+  "name": "DNS Latency High - WARNING",
+  "type": "query alert",
+  "query": "max(last_5m):max:dns_internal_latency{*} > 100",
+  "message": "DNS latency on {{server.name}} is above 100ms for 5 minutes.\n\n@slack-ops",
+  "tags": ["dns", "latency", "warning"],
+  "options": {
+    "notify_audit": false,
+    "locked": false,
+    "require_full_window": true,
+    "notify_no_data": false,
+    "renotify_interval": 60,
+    "evaluation_delay": 30,
+    "new_group_delay": 30,
+    "include_tags": false,
+    "thresholds": {
+      "critical": 500,
+      "warning": 100
+    }
+  }
+}

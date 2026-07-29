@@ -1,0 +1,56 @@
+# DNS Monitoring - Pi-hole API
+# Queries Pi-hole API from all pihole servers in inventory
+{% for host in groups['pihole'] %}
+[[inputs.http]]
+  urls = ["http://{{ hostvars[host].ansible_host }}/admin/api.php?summaryRaw"]
+  name_override = "pihole"
+  interval = "60s"
+  timeout = "10s"
+  [inputs.http.tags]
+    server = "{{ host }}.{{ dns_subdomain_base }}"
+
+{% endfor %}
+
+# DNS Latency - Internal
+# Query each Unbound from each pihole server in inventory
+# Tests that internal DNS resolution works across the fleet
+{% for host in groups['pihole'] %}
+[[inputs.exec]]
+  commands = ["dig +short {{ host }}.{{ dns_subdomain_base }} @{{ hostvars[host].ansible_host }}#5335 +time=3 +tries=2"]
+  name_override = "dns_internal_latency"
+  interval = "60s"
+  data_format = "value"
+  data_type = "integer"
+  [inputs.exec.tags]
+    server = "{{ host }}.{{ dns_subdomain_base }}"
+    target = "{{ host }}.{{ dns_subdomain_base }}"
+
+{% endfor %}
+
+# DNS Latency - External
+# Query public DNS to verify internet connectivity
+# Tests that upstream DNS resolution works
+{% for domain in telegraf_dns_external_domains | default(['google.com', 'cloudflare.com', 'github.com']) %}
+[[inputs.exec]]
+  commands = ["dig +short {{ domain }} @8.8.8.8 +time=3 +tries=2"]
+  name_override = "dns_external_latency"
+  interval = "60s"
+  data_format = "value"
+  data_type = "integer"
+  [inputs.exec.tags]
+    server = "{{ inventory_hostname }}.{{ dns_subdomain_base }}"
+    upstream = "google-dns"
+    domain = "{{ domain }}"
+
+[[inputs.exec]]
+  commands = ["dig +short {{ domain }} @1.1.1.1 +time=3 +tries=2"]
+  name_override = "dns_external_latency"
+  interval = "60s"
+  data_format = "value"
+  data_type = "integer"
+  [inputs.exec.tags]
+    server = "{{ inventory_hostname }}.{{ dns_subdomain_base }}"
+    upstream = "cloudflare-dns"
+    domain = "{{ domain }}"
+
+{% endfor %}
