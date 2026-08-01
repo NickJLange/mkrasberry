@@ -4,14 +4,17 @@
     name: net.ipv4.ip_forward
     value: 1
     state: present
+    sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
 - sysctl:
     name: net.core.default_qdisc
     value: fq
     state: present
+    sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
 - sysctl:
     name: net.ipv4.tcp_congestion_control
     value: bbr
     state: present
+    sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
 
 - name: Check if HostAPd directory exists
   stat:

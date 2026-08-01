@@ -19,8 +19,23 @@
         value: "1"
         state: present
         reload: yes
+        sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
       loop:
         - eth0
         - wg0
       when: item in ansible_facts['interfaces']
 
+    - name: Disable reverse-path filtering for WireGuard routing interfaces
+      ansible.posix.sysctl:
+        name: "net.ipv4.conf.{{ item }}.rp_filter"
+        value: "0"
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
+      loop:
+        - all
+        - default
+        - eth0
+        - wg0
+        - wg1
+      when: item in ['all', 'default'] or item in ansible_facts['interfaces']
