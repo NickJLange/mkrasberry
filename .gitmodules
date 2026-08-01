@@ -49,10 +49,6 @@
 	path = roles/pihole.container
 	url = git@github.com:NickJLange/pihole.container.git
 	branch = master
-[submodule "roles/jellyfin.container"]
-	path = roles/jellyfin.container
-	url = git@github.com:NickJLange/jellyfin.container.git
-	branch = master
 [submodule "roles/ansible-datadog"]
 	path = roles/ansible-datadog
 	url = git@github.com:NickJLange/ansible-datadog.git
@@ -66,3 +62,7 @@
 [submodule "roles/mosquitto.container"]
 	path = roles/mosquitto.container
 	url = git@github.com:NickJLange/mosquitto.container.git
+[submodule "roles/syslog.container"]
+	path = roles/syslog.container
+	url = git@github.com:NickJLange/syslog.container.git
+	branch = master
