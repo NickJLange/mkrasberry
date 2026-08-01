@@ -25,7 +25,7 @@
         state: present
         sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
     - sysctl:
-        name: net.ipv4.tcp_rmem
+        name: net.ipv4.tcp_wmem
         value: "4096 87380 {{ MaxExpectedPathBDP }}"
         state: present
         sysctl_file: /etc/sysctl.d/99-mkrasberry.conf
