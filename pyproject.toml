@@ -5,6 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "ansible-core>=2.20.2",
+    "ansible-core>=2.20.7rc1",
     "datadog>=0.52.1",
 ]
