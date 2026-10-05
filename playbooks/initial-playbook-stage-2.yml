@@ -7,12 +7,55 @@
     - role: msmtp
   #    - role: wifiClientSetup
   tasks:
-    - name: "Delete the Raspberry PI default user: {{ item }}"
-      shell:
-        "if id {{ item }} 2>/dev/null 1>/dev/null; then killall -q -u {{ item }} -9 && userdel {{ item }}; fi "
-        #FIXME: Stupid systemd
+    # Remove image default users (poison_usernames) completely. The old
+    # one-liner (`killall -q ... && userdel`) skipped userdel whenever there
+    # was nothing to kill and hid it with ignore_errors; older variants used
+    # `userdel -f` without -r and left /home/<user> for a reused uid.
+    - name: Default users - look up accounts
+      ansible.builtin.getent:
+        database: passwd
+      tags: [poison_users]
+
+    - name: Default users - stop sessions/processes
+      shell: |
+        loginctl terminate-user {{ item }} 2>/dev/null || true
+        pkill -KILL -u {{ item }} && echo KILLED || true
       loop: "{{ poison_usernames }}"
-      ignore_errors: true
+      when: item in ansible_facts.getent_passwd
+      register: poison_kill
+      changed_when: "'KILLED' in poison_kill.stdout"
+      tags: [poison_users]
+
+    - name: Default users - delete account, home and mail
+      user:
+        name: "{{ item }}"
+        state: absent
+        remove: true
+        force: true
+      loop: "{{ poison_usernames }}"
+      tags: [poison_users]
+
+    - name: Default users - remove orphaned home directories
+      file:
+        path: "/home/{{ item }}"
+        state: absent
+      loop: "{{ poison_usernames }}"
+      tags: [poison_users]
+
+    - name: Default users - remove image NOPASSWD sudo rule
+      file:
+        path: /etc/sudoers.d/010_pi-nopasswd
+        state: absent
+      tags: [poison_users]
+
+    - name: sudo group requires a password (per-user NOPASSWD rules live in sudoers.d)
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^%sudo\s+ALL=\(ALL(:ALL)?\)\s+NOPASSWD:\s*ALL\s*$'
+        line: "%sudo\tALL=(ALL:ALL) ALL"
+        backrefs: true
+        validate: "visudo -cf %s"
+      tags: [poison_users]
 
     - name: Install requisite packages (likely present)
       apt:

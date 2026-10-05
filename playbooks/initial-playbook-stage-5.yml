@@ -63,28 +63,6 @@
         state: absent
       when: not (kjl_sudo | default(false) | bool)
       tags: [users]
-
-    # FIXME: stage-2 deletes poison users with `userdel -f` (no -r), leaving
-    # /home/<name> owned by a uid that later gets reused (e.g. kjl=1002 owned
-    # /home/pi). Until that's fixed and the dirs removed, lock them to root.
-    - name: Quarantine orphaned homes of removed default users (root 0700/0600)
-      shell: |
-        set -e
-        d=/home/{{ item }}
-        [ -d "$d" ] || exit 0
-        getent passwd {{ item }} >/dev/null && exit 0
-        if find "$d" \( -not -user 0 -o -not -group 0 \) -print -quit | grep -q . \
-           || find "$d" -type d -not -perm 0700 -print -quit | grep -q . \
-           || find "$d" -type f -not -perm 0600 -print -quit | grep -q .; then
-          chown -R root:root "$d"
-          find "$d" -type d -exec chmod 0700 {} +
-          find "$d" -type f -exec chmod 0600 {} +
-          echo QUARANTINED
-        fi
-      loop: "{{ poison_usernames }}"
-      register: poison_home
-      changed_when: "'QUARANTINED' in poison_home.stdout"
-      tags: [users]
     - name: bash - Fix user systemd, XDG For interactive and non-interactive shells
       ansible.builtin.lineinfile:
         path: "/etc/bash.bashrc"
