@@ -20,41 +20,12 @@
 
     # kjl (formerly "kenta"): key-only login, no supplementary groups, no sudo
     # unless a host sets kjl_sudo: true. Run alone with: --tags users
-    - name: kjl - probe legacy/new account state (read-only, also runs in --check)
-      shell: |
-        for n in kenta kjl; do
-          getent passwd $n >/dev/null && echo "u_$n"
-          getent group $n >/dev/null && echo "g_$n"
-        done; true
-      register: kjl_probe
+    - name: kjl - legacy kenta account must not exist (renamed fleet-wide 2026-10)
+      command: getent passwd kenta
+      register: kjl_legacy
       check_mode: false
       changed_when: false
-      tags: [users]
-
-    - name: kjl - refuse ambiguous state
-      fail:
-        msg: "Both users kenta and kjl exist on {{ inventory_hostname }}; fix by hand"
-      when: "'u_kenta' in kjl_probe.stdout_lines and 'u_kjl' in kjl_probe.stdout_lines"
-      tags: [users]
-
-    - name: kjl - rename user kenta -> kjl (keeps uid, moves home)
-      shell: |
-        set -e
-        loginctl terminate-user kenta 2>/dev/null || true
-        pkill -KILL -u kenta || true
-        sleep 1
-        test ! -e /home/kjl
-        usermod -l kjl -d /home/kjl -m -c kjl kenta
-        [ -e /var/mail/kenta ] && mv /var/mail/kenta /var/mail/kjl || true
-        [ -e /var/spool/cron/crontabs/kenta ] && mv /var/spool/cron/crontabs/kenta /var/spool/cron/crontabs/kjl || true
-        [ -e /var/lib/systemd/linger/kenta ] && mv /var/lib/systemd/linger/kenta /var/lib/systemd/linger/kjl || true
-        sed -i 's/^kenta:/kjl:/' /etc/subuid /etc/subgid 2>/dev/null || true
-      when: "'u_kenta' in kjl_probe.stdout_lines"
-      tags: [users]
-
-    - name: kjl - rename group kenta -> kjl
-      command: groupmod -n kjl kenta
-      when: "'g_kenta' in kjl_probe.stdout_lines and 'g_kjl' not in kjl_probe.stdout_lines"
+      failed_when: kjl_legacy.rc == 0
       tags: [users]
 
     - name: kjl - ensure account (no supplementary groups, password locked)
@@ -73,8 +44,8 @@
         key: "{{ kjl_ssh_keys | default([kjl_ssh_key | default(kenta_ssh_key)]) | join('\n') }}"
         comment: kjl
         exclusive: true
-      # in --check the user may only exist in simulation; skip rather than fail lookup
-      when: not ansible_check_mode or 'u_kjl' in kjl_probe.stdout_lines
+      # in --check a brand-new kjl only exists in simulation, so the lookup fails
+      ignore_errors: "{{ ansible_check_mode }}"
       tags: [users]
 
     - name: kjl - sudo only where explicitly enabled (host_vars kjl_sudo=true)
