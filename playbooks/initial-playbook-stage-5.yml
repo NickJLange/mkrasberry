@@ -18,18 +18,102 @@
         name: wheel
         state: present
 
-    - name: Add Kenta
+    # kjl (formerly "kenta"): key-only login, no supplementary groups, no sudo
+    # unless a host sets kjl_sudo: true. Run alone with: --tags users
+    - name: kjl - probe legacy/new account state (read-only, also runs in --check)
+      shell: |
+        for n in kenta kjl; do
+          getent passwd $n >/dev/null && echo "u_$n"
+          getent group $n >/dev/null && echo "g_$n"
+        done; true
+      register: kjl_probe
+      check_mode: false
+      changed_when: false
+      tags: [users]
+
+    - name: kjl - refuse ambiguous state
+      fail:
+        msg: "Both users kenta and kjl exist on {{ inventory_hostname }}; fix by hand"
+      when: "'u_kenta' in kjl_probe.stdout_lines and 'u_kjl' in kjl_probe.stdout_lines"
+      tags: [users]
+
+    - name: kjl - rename user kenta -> kjl (keeps uid, moves home)
+      shell: |
+        set -e
+        loginctl terminate-user kenta 2>/dev/null || true
+        pkill -KILL -u kenta || true
+        sleep 1
+        test ! -e /home/kjl
+        usermod -l kjl -d /home/kjl -m -c kjl kenta
+        [ -e /var/mail/kenta ] && mv /var/mail/kenta /var/mail/kjl || true
+        [ -e /var/spool/cron/crontabs/kenta ] && mv /var/spool/cron/crontabs/kenta /var/spool/cron/crontabs/kjl || true
+        [ -e /var/lib/systemd/linger/kenta ] && mv /var/lib/systemd/linger/kenta /var/lib/systemd/linger/kjl || true
+        sed -i 's/^kenta:/kjl:/' /etc/subuid /etc/subgid 2>/dev/null || true
+      when: "'u_kenta' in kjl_probe.stdout_lines"
+      tags: [users]
+
+    - name: kjl - rename group kenta -> kjl
+      command: groupmod -n kjl kenta
+      when: "'g_kenta' in kjl_probe.stdout_lines and 'g_kjl' not in kjl_probe.stdout_lines"
+      tags: [users]
+
+    - name: kjl - ensure account (no supplementary groups, password locked)
       user:
-        name: kenta
-        comment: Kenta
-        groups: wheel
+        name: kjl
+        comment: kjl
+        groups: []
+        append: false
         shell: /bin/bash
         password_lock: true
-    - name: Set authorized key taken from file
-      authorized_key:
-        user: kenta
-        state: present
-        key: "{{ kenta_ssh_key }}"
+      tags: [users]
+
+    - name: kjl - authorized key (exclusive)
+      ansible.posix.authorized_key:
+        user: kjl
+        key: "{{ kjl_ssh_key | default(kenta_ssh_key) }}"
+        comment: kjl
+        exclusive: true
+      # in --check the user may only exist in simulation; skip rather than fail lookup
+      when: not ansible_check_mode or 'u_kjl' in kjl_probe.stdout_lines
+      tags: [users]
+
+    - name: kjl - sudo only where explicitly enabled (host_vars kjl_sudo=true)
+      copy:
+        dest: /etc/sudoers.d/kjl
+        content: "kjl ALL=(ALL:ALL) ALL\n"
+        mode: "0440"
+        validate: "visudo -cf %s"
+      when: kjl_sudo | default(false) | bool
+      tags: [users]
+
+    - name: kjl - no sudo rule unless enabled
+      file:
+        path: /etc/sudoers.d/kjl
+        state: absent
+      when: not (kjl_sudo | default(false) | bool)
+      tags: [users]
+
+    # FIXME: stage-2 deletes poison users with `userdel -f` (no -r), leaving
+    # /home/<name> owned by a uid that later gets reused (e.g. kjl=1002 owned
+    # /home/pi). Until that's fixed and the dirs removed, lock them to root.
+    - name: Quarantine orphaned homes of removed default users (root 0700/0600)
+      shell: |
+        set -e
+        d=/home/{{ item }}
+        [ -d "$d" ] || exit 0
+        getent passwd {{ item }} >/dev/null && exit 0
+        if find "$d" \( -not -user 0 -o -not -group 0 \) -print -quit | grep -q . \
+           || find "$d" -type d -not -perm 0700 -print -quit | grep -q . \
+           || find "$d" -type f -not -perm 0600 -print -quit | grep -q .; then
+          chown -R root:root "$d"
+          find "$d" -type d -exec chmod 0700 {} +
+          find "$d" -type f -exec chmod 0600 {} +
+          echo QUARANTINED
+        fi
+      loop: "{{ poison_usernames }}"
+      register: poison_home
+      changed_when: "'QUARANTINED' in poison_home.stdout"
+      tags: [users]
     - name: bash - Fix user systemd, XDG For interactive and non-interactive shells
       ansible.builtin.lineinfile:
         path: "/etc/bash.bashrc"
