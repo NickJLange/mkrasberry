@@ -67,10 +67,10 @@
         password_lock: true
       tags: [users]
 
-    - name: kjl - authorized key (exclusive)
+    - name: kjl - authorized keys (exclusive; kjl_ssh_keys list, else legacy single key)
       ansible.posix.authorized_key:
         user: kjl
-        key: "{{ kjl_ssh_key | default(kenta_ssh_key) }}"
+        key: "{{ kjl_ssh_keys | default([kjl_ssh_key | default(kenta_ssh_key)]) | join('\n') }}"
         comment: kjl
         exclusive: true
       # in --check the user may only exist in simulation; skip rather than fail lookup
