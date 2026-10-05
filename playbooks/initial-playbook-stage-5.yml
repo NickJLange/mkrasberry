@@ -18,18 +18,73 @@
         name: wheel
         state: present
 
-    - name: Add Kenta
+    # kjl (formerly "kenta"): key-only login, no supplementary groups, no sudo
+    # unless a host sets kjl_sudo: true. Run alone with: --tags users
+    - name: kjl - legacy kenta account must not exist (renamed fleet-wide 2026-10)
+      command: getent passwd kenta
+      register: kjl_legacy
+      check_mode: false
+      changed_when: false
+      failed_when: kjl_legacy.rc == 0
+      tags: [users]
+
+    - name: kjl - ensure account (no supplementary groups, password locked)
       user:
-        name: kenta
-        comment: Kenta
-        groups: wheel
+        name: kjl
+        comment: kjl
+        groups: []
+        append: false
         shell: /bin/bash
         password_lock: true
-    - name: Set authorized key taken from file
-      authorized_key:
-        user: kenta
-        state: present
-        key: "{{ kenta_ssh_key }}"
+      tags: [users]
+
+    - name: kjl - authorized keys (exclusive; kjl_ssh_keys list, else legacy single key)
+      ansible.posix.authorized_key:
+        user: kjl
+        key: "{{ kjl_ssh_keys | default([kjl_ssh_key | default(kenta_ssh_key)]) | join('\n') }}"
+        comment: kjl
+        exclusive: true
+      # in --check a brand-new kjl only exists in simulation, so the lookup fails
+      ignore_errors: "{{ ansible_check_mode }}"
+      tags: [users]
+
+    - name: kjl - sudo only where explicitly enabled (host_vars kjl_sudo=true)
+      copy:
+        dest: /etc/sudoers.d/kjl
+        content: "kjl ALL=(ALL:ALL) ALL\n"
+        mode: "0440"
+        validate: "visudo -cf %s"
+      when: kjl_sudo | default(false) | bool
+      tags: [users]
+
+    - name: kjl - no sudo rule unless enabled
+      file:
+        path: /etc/sudoers.d/kjl
+        state: absent
+      when: not (kjl_sudo | default(false) | bool)
+      tags: [users]
+
+    # FIXME: stage-2 deletes poison users with `userdel -f` (no -r), leaving
+    # /home/<name> owned by a uid that later gets reused (e.g. kjl=1002 owned
+    # /home/pi). Until that's fixed and the dirs removed, lock them to root.
+    - name: Quarantine orphaned homes of removed default users (root 0700/0600)
+      shell: |
+        set -e
+        d=/home/{{ item }}
+        [ -d "$d" ] || exit 0
+        getent passwd {{ item }} >/dev/null && exit 0
+        if find "$d" \( -not -user 0 -o -not -group 0 \) -print -quit | grep -q . \
+           || find "$d" -type d -not -perm 0700 -print -quit | grep -q . \
+           || find "$d" -type f -not -perm 0600 -print -quit | grep -q .; then
+          chown -R root:root "$d"
+          find "$d" -type d -exec chmod 0700 {} +
+          find "$d" -type f -exec chmod 0600 {} +
+          echo QUARANTINED
+        fi
+      loop: "{{ poison_usernames }}"
+      register: poison_home
+      changed_when: "'QUARANTINED' in poison_home.stdout"
+      tags: [users]
     - name: bash - Fix user systemd, XDG For interactive and non-interactive shells
       ansible.builtin.lineinfile:
         path: "/etc/bash.bashrc"
