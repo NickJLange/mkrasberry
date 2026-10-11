@@ -1,0 +1,92 @@
+---
+# certpush owns the cert directory so the cert-renewal job can replace certs
+# over SSH without sudo. Certs and keys are world-readable (0644) because many
+# services and containers on each host read them (HA, Node-RED, Vault, nginx,
+# rsyslog); there is no per-service secrecy boundary to enforce.
+
+- name: certpush - require at least one authorized key
+  assert:
+    that:
+      - certpush_authorized_keys | length > 0
+    fail_msg: "certpush_authorized_keys is empty; set it in group_vars (e.g. group_vars/linux.yml)."
+
+- name: certpush - ensure system account (no supplementary groups, password locked)
+  user:
+    name: "{{ certpush_user }}"
+    comment: internal cert push
+    system: true
+    home: "{{ certpush_home }}"
+    create_home: true
+    shell: /bin/sh
+    groups: []
+    append: false
+    password_lock: true
+
+- name: certpush - authorized keys (exclusive)
+  ansible.posix.authorized_key:
+    user: "{{ certpush_user }}"
+    key: "{{ certpush_authorized_keys | join('\n') }}"
+    key_options: "{{ certpush_key_options | default(omit, true) }}"
+    exclusive: true
+  # in --check a brand-new certpush only exists in simulation, so the lookup fails
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: certpush - no sudoers rule
+  file:
+    path: "/etc/sudoers.d/{{ certpush_user }}"
+    state: absent
+
+- name: certpush - must not be able to sudo
+  command: "sudo -n -l -U {{ certpush_user }}"
+  register: certpush_sudo
+  check_mode: false
+  changed_when: false
+  failed_when: "'not allowed to run sudo' not in certpush_sudo.stdout"
+  when: not ansible_check_mode
+
+- name: certpush - own cert and backup directories (0755)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ certpush_user }}"
+    group: "{{ certpush_user }}"
+    mode: "0755"
+  loop:
+    - "{{ cert_dir }}"
+    - "{{ cert_backup_dir }}"
+
+- name: certpush - find existing subdirectories
+  find:
+    paths: "{{ cert_dir }}"
+    recurse: true
+    file_type: directory
+  register: certpush_subdirs
+
+- name: certpush - own subdirectories (0755)
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ certpush_user }}"
+    group: "{{ certpush_user }}"
+    mode: "0755"
+  loop: "{{ certpush_subdirs.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: certpush - find existing cert and key files
+  find:
+    paths: "{{ cert_dir }}"
+    recurse: true
+    file_type: file
+  register: certpush_files
+
+# Symlinks (server.cert/server.key) are left alone: certpush owns the
+# directory, so it can replace them regardless of the link's owner.
+- name: certpush - own cert and key files, world-readable (0644)
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ certpush_user }}"
+    group: "{{ certpush_user }}"
+    mode: "0644"
+  loop: "{{ certpush_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
