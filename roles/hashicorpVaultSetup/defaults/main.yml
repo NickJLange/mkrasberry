@@ -4,7 +4,7 @@ vault_checksum: "sha512:c2e7b5d2935b04c8afafaea3a50f849c8816332d8a7ff462831fa138
 vault_install_path: /usr/local/vault/
 vault_datacenter: dc1
 vault_config_path: /usr/local/vault/etc/
-vault_data_path: /usr/local/vault/data/
+vault_data_path: /vault/file
 systemd_dir: /etc/systemd/system
 vault_user: vault
 vault_group: vault

@@ -25,6 +25,8 @@
         shell: /usr/sbin/nologin
         password_lock: true
         groups: "{{ container_management_group }}"
+        # Keep groups added outside this role (e.g. bluetooth) instead of replacing them
+        append: true
   - name: snag the userid
     shell: "id -u {{ container_user }}"
     register: container_user_pid

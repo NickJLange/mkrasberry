@@ -42,5 +42,11 @@
 - import_tasks: config.yml
   tags: [service_install_config]
 
-- import_tasks: first_run.yml
+- name: Deploy Vault Quadlet container file
+  template:
+    src: vault.container.j2
+    dest: "{{ quadlet_path }}/{{ container_friendly_name }}.container"
+    mode: 0644
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
   tags: [service_install_binary]
