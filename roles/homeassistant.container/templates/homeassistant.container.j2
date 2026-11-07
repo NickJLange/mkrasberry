@@ -1,6 +1,9 @@
 [Unit]
 Description=Home Assistant Container
 After=network-online.target
+# System D-Bus comes from dbus-auth-proxy's socket volume, not the host's /run/dbus
+Requires=dbus-auth-proxy.service
+After=dbus-auth-proxy.service
 {% for path in container_required_paths | default([]) %}
 AssertPathExists={{ path }}
 {% endfor %}
@@ -10,7 +13,7 @@ Image={{ image_name }}
 ContainerName={{ container_friendly_name }}
 EnvironmentFile={{ container_env_file }}
 Network=host
-Volume=/run/dbus/:/run/dbus/:ro
+Volume=dbus-socket:/run/dbus:rw
 Volume={{ container_prefix }}/etc/:/config:Z,idmap
 Volume={{ container_prefix }}/run:/run:Z,idmap
 Volume=/etc/letsencrypt/:/ssl/:ro,Z
