@@ -1,1 +1,7 @@
 ---
+
+# configuration.yaml serves HTTPS from /ssl/server.{cert,key} (/etc/letsencrypt
+# mounted at /ssl); rendered as AssertPathExists= and checked at deploy
+container_required_paths:
+  - /etc/letsencrypt/server.cert
+  - /etc/letsencrypt/server.key

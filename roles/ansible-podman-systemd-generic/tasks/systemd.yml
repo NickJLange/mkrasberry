@@ -1,121 +1,115 @@
 ---
 
+# systemd.yml - Retire the legacy generated unit, reload systemd, and restart the Quadlet service
 
-#--name=container  --env-file=envfile -v ./etc-container/:/etc/container/:z -v ./etc-dnsmasq.d/:/etc/dnsmasq.d/:z --network=host container/container:latest
-
-###############################################################################
-############# Make systemd unit file location for non-root ####################
-###############################################################################
-
-- block:
-  - name: create tld
-    file:
-      path: "/{{ container_prefix }}/.config"
-      mode: 0711
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-      state: directory
-  - name: create tld
-    file:
-      path: "/{{ container_prefix }}/.config/systemd"
-      mode: 0711
-      state: directory
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-  - name: create tld
-    file:
-      path: "/{{ container_prefix }}/.config/systemd/user"
-      mode: 0711
-      owner: "{{container_user}}"
-      group: "{{container_group}}"
-      state: directory
-  - set_fact:
-      systemd_path:  "/{{ container_prefix }}/.config/systemd/user"
-      systemd_scope: "user"
-  when: container_user != "root"
-
-
-
-###############################################################################
-################################ FIXME - DOES THIS WORK ####################################
-###############################################################################
-
-- name: "generate systemd template for {{ container_friendly_name}}"
-  shell: " {{ podman_path }} stop {{ container_friendly_name }}"
-  args:
-    executable: /bin/bash
-    chdir: /tmp
-  become_user: "{{ container_user }}"
-
-
-
-###############################################################################
-################################ CONFIGURE ####################################
-###############################################################################
-
-
-- name: "generate systemd template for {{ container_friendly_name}}"
-  shell: " {{ podman_path }} generate systemd  --container-prefix {{ systemd_prefix }} -f -n -t {{ container_timeout }} --restart-policy {{ container_restart_policy }} {{ container_friendly_name }}"
-  args:
-    executable: /bin/bash
-    chdir: /tmp
-  register: systemd_file
-  become_user: "{{ container_user }}"
+- name: Check that the role deployed a Quadlet unit
+  stat:
+    path: "{{ quadlet_path }}/{{ container_friendly_name }}.container"
+  register: quadlet_unit
+  become: yes
+  become_user: root
   tags: container_systemd_start
 
-- name: move generated file
-  command: "mv -f /tmp/{{systemd_prefix}}-{{container_friendly_name}}.service {{ systemd_path }}/"
-  tags: container_systemd_start
-
-- name: snag the userid
-  shell: "id -u {{ container_user }}"
-  register: container_user_pid
-  tags: container_systemd_start
-
-- debug:
-    msg: "{{container_user_pid}}"
+- name: Fail when there is no Quadlet unit to start
+  fail:
+    msg: >-
+      {{ quadlet_path }}/{{ container_friendly_name }}.container does not exist.
+      The service role must deploy a Quadlet .container file before
+      ansible-podman-systemd-generic post runs; roles still on the legacy
+      podman-run first_run.yml (e.g. tvTunerSetup) are not supported.
+  when: not quadlet_unit.stat.exists
   tags: container_systemd_start
 
 - block:
-  - name: start local systemd for user as ansible module broken
+  - name: snag the userid for rootless systemctl commands
+    shell: "id -u {{ container_user }}"
+    register: container_user_pid
+    changed_when: false
+    check_mode: false
+    tags: container_systemd_start
+
+  - name: enable lingering for rootless user
     shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} loginctl enable-linger {{ container_user }}"
     become: yes
     args:
       executable: /bin/bash
 
-  - name: daemon-reload as ansible module broken
+  - name: Check for legacy generated unit {{ systemd_prefix }}-{{ container_friendly_name }}.service
+    stat:
+      path: "{{ container_prefix }}/.config/systemd/user/{{ systemd_prefix }}-{{ container_friendly_name }}.service"
+    register: legacy_user_unit
+
+  - block:
+    - name: stop and disable legacy generated unit
+      shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user disable --now {{ systemd_prefix }}-{{ container_friendly_name }}.service"
+      become_user: "{{ container_user }}"
+      args:
+        executable: /bin/bash
+
+    - name: remove legacy generated unit file
+      file:
+        path: "{{ legacy_user_unit.stat.path }}"
+        state: absent
+
+    - name: forget the legacy unit's failed state
+      shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user daemon-reload && XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user reset-failed {{ systemd_prefix }}-{{ container_friendly_name }}.service || true"
+      become_user: "{{ container_user }}"
+      args:
+        executable: /bin/bash
+    when: legacy_user_unit.stat.exists
+
+  - name: systemd --user daemon-reload for rootless Quadlets
     shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user daemon-reload"
     become_user: "{{ container_user }}"
     args:
       executable: /bin/bash
 
-  - name: enable the service
-    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user enable {{systemd_prefix}}-{{container_friendly_name}}"
-    args:
-      executable: /bin/bash
-
-  - name: start the service
-    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user start {{systemd_prefix}}-{{container_friendly_name}}"
+  - name: restart Quadlet systemd service for rootless user
+    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user restart {{ container_friendly_name }}.service"
+    become_user: "{{ container_user }}"
     args:
       executable: /bin/bash
 
   become: yes
-#  become_method: machinectl
   become_user: "{{ container_user }}"
   tags: container_systemd_start
   when: container_user != "root"
 
 - block:
+  - name: Check for legacy generated unit {{ systemd_prefix }}-{{ container_friendly_name }}.service
+    stat:
+      path: "{{ systemd_path }}/{{ systemd_prefix }}-{{ container_friendly_name }}.service"
+    register: legacy_system_unit
 
-  - name: systemd enable container
+  - block:
+    - name: stop and disable legacy generated unit
+      systemd:
+        name: "{{ systemd_prefix }}-{{ container_friendly_name }}.service"
+        state: stopped
+        enabled: no
+        scope: "{{ systemd_scope }}"
+
+    - name: remove legacy generated unit file
+      file:
+        path: "{{ legacy_system_unit.stat.path }}"
+        state: absent
+
+    - name: forget the legacy unit's failed state
+      shell: "systemctl daemon-reload && systemctl reset-failed {{ systemd_prefix }}-{{ container_friendly_name }}.service || true"
+    when: legacy_system_unit.stat.exists
+
+  - name: systemd daemon-reload for rootful Quadlets
     systemd:
       daemon_reload: yes
-      enabled: yes
-      name: "{{systemd_prefix}}-{{container_friendly_name}}"
-      state: started
+      scope: "{{ systemd_scope }}"
+
+  - name: restart Quadlet systemd service for root
+    systemd:
+      name: "{{ container_friendly_name }}.service"
+      state: restarted
       scope: "{{ systemd_scope }}"
 
   become: yes
-  become_user: "{{ container_user }}"
+  become_user: root
   tags: container_systemd_start
   when: container_user == "root"

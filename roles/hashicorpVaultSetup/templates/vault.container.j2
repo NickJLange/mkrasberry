@@ -1,0 +1,21 @@
+[Unit]
+Description=HashiCorp Vault Container
+After=network-online.target
+
+[Container]
+Image={{ image_name }}
+ContainerName={{ container_friendly_name }}
+EnvironmentFile={{ container_env_file }}
+Network=host
+AddCapability=IPC_LOCK
+Volume={{ container_prefix }}/etc/vault.hcl:/vault/config/vault.hcl:Z
+Volume={{ container_prefix }}/log:/vault/logs:Z
+Volume={{ container_prefix }}/data:/vault/file:Z
+Exec=server
+AutoUpdate=registry
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

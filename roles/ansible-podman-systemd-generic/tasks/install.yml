@@ -61,3 +61,30 @@
     owner: root
     group: root
   when: polkit_new_dir.stat.exists and polkit_new_dir.stat.isdir and (not polkit_legacy_dir.stat.exists or not polkit_legacy_dir.stat.isdir)
+
+- name: Create rootless .config directory
+  file:
+    path: "{{ container_prefix }}/.config"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  when: container_user != 'root'
+
+- name: Create rootless .config/containers directory
+  file:
+    path: "{{ container_prefix }}/.config/containers"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  when: container_user != 'root'
+
+- name: Create Quadlet directory
+  file:
+    path: "{{ quadlet_path }}"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+
