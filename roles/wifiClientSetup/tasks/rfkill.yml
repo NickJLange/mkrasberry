@@ -3,7 +3,7 @@
 # step acts only on a radio that is actually soft-blocked, and does nothing
 # on hosts without that radio. Unblocking wifi configures no network; the
 # radio joins only a saved autoconnect profile (such as one from Raspberry Pi
-# Imager), whose routes NetworkManager ranks below Ethernet's.
+# Imager), whose routes NetworkManager ranks below Ethernet's by default.
 
 - name: Ensure rfkill is installed
   ansible.builtin.apt:
