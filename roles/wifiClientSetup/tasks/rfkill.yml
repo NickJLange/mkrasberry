@@ -1,9 +1,9 @@
 ---
 # Unblock the wifi and Bluetooth radios. Safe to run on every play: each
 # step acts only on a radio that is actually soft-blocked, and does nothing
-# on hosts without that radio. Unblocking wifi only powers the radio; it
-# does not configure or join any network, so Ethernet-only hosts keep their
-# routes.
+# on hosts without that radio. Unblocking wifi configures no network; the
+# radio joins only a saved autoconnect profile (such as one from Raspberry Pi
+# Imager), whose routes NetworkManager ranks below Ethernet's.
 
 - name: Ensure rfkill is installed
   ansible.builtin.apt:
@@ -41,6 +41,7 @@
 - name: Turn the wifi radio on through NetworkManager
   ansible.builtin.command: nmcli radio wifi on
   when:
+    - "'wlan' in rfkill_soft_blocked.stdout_lines"
     - rfkill_networkmanager.rc == 0
     - rfkill_nm_wifi.stdout | trim == 'disabled'
 
