@@ -3,14 +3,14 @@
 - [x] 1.1 Identify network equipment (switches/routers) between DNS servers
 - [x] 1.2 Verify Ubiquity switch allows VRRP multicast (224.0.0.18)
 - [x] 1.3 Verify commodity switches allow VRRP
-- [x] 1.4 Check firewall rules between DNS server pairs
+- [ ] 1.4 Check firewall rules between DNS server pairs (no evidence recorded; verify before implementing)
 
 ## 2. Address Planning
 
 - [x] 2.1 Choose VIP for Wisconsin - 192.168.20.2
 - [x] 2.2 Choose VIP for New York - 192.168.100.2
 - [x] 2.3 Choose VIP for Miyagi - 192.168.3.2
-- [x] 2.4 Verify VIPs are unused in each subnet
+- [ ] 2.4 Verify VIPs are unused in each subnet (no evidence recorded; verify before implementing)
 
 ## 3. Implementation Design
 

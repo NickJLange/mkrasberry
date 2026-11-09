@@ -113,7 +113,7 @@ Each server runs:
 
 **VIP Address Plan (per region):**
 - Reserve .2 for DNS VIP in each subnet
-- DHCP range: .11 - .254 (leaving .2 for VIP, .10 for infrastructure)
+- DHCP range: .11 - .254 (leaving .2 for VIP, .10 for infrastructure), **excluding the statically addressed DNS servers** inside that range (WI .250/.251, NY .110/.112, Miyagi .100/.101) via DHCP exclusions or reservations
 
 ```
 Wisconsin (192.168.20.0/24):
@@ -157,7 +157,7 @@ Miyagi:
 
 **Key Configuration Parameters:**
 - `advert_int`: 1 second (advertisement interval)
-- `preempt_delay`: 30 seconds (delayed preemption)
+- `preempt_delay`: 30 seconds (delayed preemption). keepalived only honours it when the instance starts in `state BACKUP`, so both nodes start as BACKUP and priority picks the master. Expected failback after recovery ≈ 30s + master-down interval (≈ 3 × `advert_int`, about 3–4s)
 - `garp_master_delay`: 5 seconds (gratuitous ARP delay)
 - Interface tracking: Built-in interface monitoring (no custom track scripts)
 
@@ -194,7 +194,7 @@ Miyagi:
   - **Mitigation**: Unbound listens on all interfaces by default, verify
 
 - **[Risk]** Keepalived state not monitored
-  - **Mitigation**: Telegraf collects keepalived state via OpenTelemetry OTLP and forwards to Datadog
+  - **Mitigation**: Telegraf to collect keepalived state and forward it to Datadog via OpenTelemetry OTLP (task 3.3, not yet implemented)
 
 ### Performance Trade-offs
 
@@ -230,6 +230,6 @@ Miyagi:
 2. ~~Network equipment~~ - **RESOLVED**: Ubiquity and commodity switches allow VRRP multicast (224.0.0.18) and protocol 112
 3. ~~Client migration~~ - **RESOLVED**: Migrate clients gradually via DHCP
 4. ~~Cross-region failover~~ - **RESOLVED**: No - too complex
-5. ~~Monitoring~~ - **RESOLVED**: Telegraf → Datadog via OpenTelemetry OTLP format (already implemented)
+5. ~~Monitoring~~ - **RESOLVED**: Telegraf → Datadog via OpenTelemetry OTLP format (keepalived state collection not yet implemented; task 3.3)
 6. ~~Preemption policy~~ - **RESOLVED**: DELAYED preemption with 30-second delay
-7. ~~Health checks~~ - **RESOLVED**: Use keepalived's built-in interface tracking (no custom track scripts)
+7. ~~Health checks~~ - **RESOLVED**: Use keepalived's built-in interface tracking (no custom track scripts). This only catches link loss: a crashed Pi-hole/Unbound will not move the VIP, so DNS-process failure is out of scope for this design (a `vrrp_script` DNS probe is the follow-up if needed)

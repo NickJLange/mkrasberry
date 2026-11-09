@@ -88,7 +88,7 @@ The analysis SHALL document known pitfalls and mitigations.
 #### Scenario: ARP cache stale
 - **WHEN** failover occurs
 - **THEN** client ARP caches may point to wrong MAC for VIP
-- **MITIGATION**: Use lower advertisement interval and garp_master_delay
+- **MITIGATION**: The new master sends gratuitous ARPs on takeover and repeats them after `garp_master_delay` (5s); `garp_master_refresh` can keep re-announcing. `advert_int` only sets how fast the failure is detected (master-down ≈ 3 × `advert_int`), so it bounds the 5-second migration target but does not refresh client ARP caches
 
 #### Scenario: Split-brain
 - **WHEN** both servers claim VIP
