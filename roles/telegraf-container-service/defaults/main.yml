@@ -2,3 +2,9 @@
 remote_config_url: "https://europe-west1-1.gcp.cloud2.influxdata.com/api/v2/telegrafs/5d0d0391a43a9023"
 influx_db_url: "https://europe-west1-1.gcp.cloud2.influxdata.com"
 influx_cloud_token: "{{influx_cloud_token}}"
+
+telegraf_dns_monitoring_enabled: true
+telegraf_dns_external_domains:
+  - google.com
+  - cloudflare.com
+  - github.com

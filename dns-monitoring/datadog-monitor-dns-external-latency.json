@@ -1,0 +1,21 @@
+{
+  "name": "DNS External Latency High",
+  "type": "query alert",
+  "query": "max(last_5m):max:dns_external_latency{*} > 200",
+  "message": "External DNS latency is above 200ms. Check internet connectivity or upstream DNS.\n\n@slack-ops",
+  "tags": ["dns", "external", "latency"],
+  "options": {
+    "notify_audit": false,
+    "locked": false,
+    "require_full_window": true,
+    "notify_no_data": false,
+    "renotify_interval": 60,
+    "evaluation_delay": 30,
+    "new_group_delay": 30,
+    "include_tags": false,
+    "thresholds": {
+      "critical": 500,
+      "warning": 200
+    }
+  }
+}

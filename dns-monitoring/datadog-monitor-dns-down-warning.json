@@ -1,0 +1,21 @@
+{
+  "name": "DNS Server Down - WARNING",
+  "type": "query alert",
+  "query": "max(last_5m):max:pihole.dns_up{*} by {server} < 1",
+  "message": "DNS server {{server.name}} has been down for 5 minutes. \n\n@slack-ops",
+  "tags": ["dns", "pihole", "warning"],
+  "options": {
+    "notify_audit": false,
+    "locked": false,
+    "require_full_window": true,
+    "notify_no_data": false,
+    "renotify_interval": 30,
+    "evaluation_delay": 30,
+    "new_group_delay": 30,
+    "include_tags": false,
+    "thresholds": {
+      "critical": 1,
+      "warning": 1
+    }
+  }
+}
