@@ -36,7 +36,6 @@ REQUIRED_VARS=(
     "Timezone"
     "poison_usernames"
     "MaxExpectedPathBDP"
-    "kenta_ssh_key"
     "primary_syslog_server"
     "backup_syslog_server"
     "my_datadog_api_key"
@@ -70,8 +69,12 @@ check_playbook_syntax() {
             continue
         fi
 
-        SYNTAX_OUTPUT=$(ansible-playbook --syntax-check "$pb" 2>&1)
-        STATUS=$?
+        # Inside `if` so set -e doesn't abort on the first failing playbook.
+        if SYNTAX_OUTPUT=$(ansible-playbook --syntax-check "$pb" 2>&1); then
+            STATUS=0
+        else
+            STATUS=$?
+        fi
 
         if [ $STATUS -eq 0 ]; then
             echo -e "  Checking syntax: $pb ... [${GREEN}PASS${NC}]"
@@ -87,8 +90,23 @@ check_playbook_syntax() {
 # Helper function to check role availability in roles/ and roles_path
 check_roles() {
     echo -e "${BLUE}=== Stage 2: Role Availability Checks ===${NC}"
-    # Parse roles_path from ansible.cfg or default paths
-    local search_paths=("./roles" "../overlord/ansible/roles" "/Users/njl/dev/src/overlord/ansible/roles")
+    # Search the roles path Ansible itself uses (ansible.cfg / ANSIBLE_ROLES_PATH)
+    local search_paths=()
+    local roles_path_out
+    if ! roles_path_out=$(ansible-config dump --format json 2>/dev/null | python3 -c '
+import json, sys
+for entry in json.load(sys.stdin):
+    if entry.get("name") == "DEFAULT_ROLES_PATH":
+        print("\n".join(entry.get("value") or []))
+'); then
+        echo -e "  Reading roles_path from ansible-config ... [${RED}FAIL${NC}]"
+        TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+        echo ""
+        return
+    fi
+    while IFS= read -r sp; do
+        [ -n "$sp" ] && search_paths+=("$sp")
+    done <<< "$roles_path_out"
 
     for role in "${REQUIRED_ROLES[@]}"; do
         local found=0
@@ -133,8 +151,8 @@ check_target_host() {
 
     # Validate required variables using Python
     local var_check_result
-    var_check_result=$(python3 - "$host_json" "${REQUIRED_VARS[@]}" << 'EOF'
-import sys, json
+    var_check_result=$(CERT_SUBDOMAIN="${CERT_SUBDOMAIN:-}" python3 - "$host_json" "${REQUIRED_VARS[@]}" << 'EOF'
+import os, sys, json
 
 try:
     host_vars = json.loads(sys.argv[1])
@@ -150,10 +168,18 @@ for var in required:
     if val is None or val == "":
         missing.append(var)
 
-# Check cert subdomain variable: either subdomain or dns_subdomain must be defined
-has_subdomain = bool(host_vars.get("subdomain") or host_vars.get("dns_subdomain"))
+# Cert subdomain: make passes the effective value (subdomain=/dnsgroup=) as
+# CERT_SUBDOMAIN; the "{{ dns_subdomain }}" placeholder means "use the host's own".
+cert_subdomain = os.environ.get("CERT_SUBDOMAIN", "").strip()
+if cert_subdomain == "{{ dns_subdomain }}":
+    cert_subdomain = ""
+has_subdomain = bool(cert_subdomain or host_vars.get("subdomain") or host_vars.get("dns_subdomain"))
 if not has_subdomain:
     missing.append("dns_subdomain (or subdomain)")
+
+# stage-5 accepts kjl_ssh_keys, kjl_ssh_key or the legacy kenta_ssh_key
+if not any(host_vars.get(v) for v in ("kjl_ssh_keys", "kjl_ssh_key", "kenta_ssh_key")):
+    missing.append("kjl_ssh_keys (or kjl_ssh_key)")
 
 if missing:
     print("MISSING:" + ",".join(missing))
@@ -185,8 +211,8 @@ EOF
 
         local ssh_key="${BASH_REMATCH[1]}"
         if [ -n "$ssh_key" ]; then
-            # Expand ~ if present
-            eval ssh_key_expanded="$ssh_key"
+            # Expand a leading ~ only; never re-parse the inventory value as shell
+            local ssh_key_expanded="${ssh_key/#\~/$HOME}"
             if [ -f "$ssh_key_expanded" ]; then
                 echo -e "  Checking SSH key file: $ssh_key ... [${GREEN}PASS${NC}]"
             else
@@ -195,7 +221,7 @@ EOF
         fi
 
         # Check Vault python environment for certs playbook
-        local venv_candidate="${VENV_PATH:-/Users/njl/dev/src/overlord/.venv}"
+        local venv_candidate="${VENV_PATH:-${REPO_DIR}/../overlord/.venv}"
         if [ -f "${venv_candidate}/bin/python3" ] && "${venv_candidate}/bin/python3" -c "import hvac" >/dev/null 2>&1; then
             echo -e "  Checking Vault Python environment (${venv_candidate}) ... [${GREEN}PASS${NC}]"
         else
@@ -215,17 +241,18 @@ run_self_test() {
 
     # Test 1: Nonexistent host must fail
     echo -n "  Self-Test 1: Verify nonexistent host produces error... "
+    # Only the specific "host not in inventory" failure counts; a broken
+    # Ansible install or unparsable inventory must not pass this test.
     local nonexist_out
     if nonexist_out=$(ansible-inventory --host "__nonexistent_target_12345__" 2>&1); then
-        # If ansible-inventory returned 0, check if JSON was empty or error was caught
-        if [ "$nonexist_out" = "{}" ] || [ -z "$nonexist_out" ]; then
-            echo -e "[${GREEN}PASS${NC}] (Identified as missing host)"
-        else
-            echo -e "[${RED}FAIL${NC}] (Expected nonexistent host to fail)"
-            self_test_failures=$((self_test_failures + 1))
-        fi
+        echo -e "[${RED}FAIL${NC}] (Expected nonexistent host to fail)"
+        self_test_failures=$((self_test_failures + 1))
+    elif grep -q "Could not match supplied host pattern" <<< "$nonexist_out"; then
+        echo -e "[${GREEN}PASS${NC}] (Reported as not in inventory)"
     else
-        echo -e "[${GREEN}PASS${NC}] (Correctly caught error exit code)"
+        echo -e "[${RED}FAIL${NC}] (Failed for another reason)"
+        echo "$nonexist_out" | sed 's/^/    /'
+        self_test_failures=$((self_test_failures + 1))
     fi
 
     # Test 2: Missing required variable detection

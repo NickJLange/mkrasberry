@@ -9,7 +9,7 @@ endif
 
 # Python env used for the localhost-delegated Vault lookups (needs hvac installed).
 # Override with `make ... VENV_PATH=/path/to/venv` or by exporting VENV_PATH.
-VENV_PATH ?= /Users/njl/dev/src/overlord/.venv
+VENV_PATH ?= $(abspath $(CURDIR)/../overlord/.venv)
 
 # Cert subdomain for internal_certs_update_endpoints:
 #   subdomain=wisconsin.nicklange.family   -> used verbatim
@@ -38,7 +38,7 @@ post:
 		fi
 
 test:
-	@./scripts/smoke_test_configure.sh "${hostlist}"
+	@VENV_PATH=$(VENV_PATH) CERT_SUBDOMAIN='$(cert_subdomain)' ./scripts/smoke_test_configure.sh "${hostlist}"
 
 test-self-test:
 	@./scripts/smoke_test_configure.sh --self-test
