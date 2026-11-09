@@ -74,9 +74,9 @@
               export LC_MESSAGES=en_US.UTF-8
             mode: "0644"
 
-        - name: Fix macOS LC_CTYPE=UTF-8 warnings in /etc/bash.bashrc
+        - name: Fix macOS LC_CTYPE=UTF-8 warnings in the system-wide bashrc
           blockinfile:
-            path: /etc/bash.bashrc
+            path: "{{ '/etc/bashrc' if ansible_os_family == 'RedHat' else '/etc/bash.bashrc' }}"
             insertafter: EOF
             marker: "# {mark} ANSIBLE MANAGED LOCALE OVERRIDE FOR MACOS"
             block: |
