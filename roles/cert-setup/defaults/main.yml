@@ -1,0 +1,12 @@
+---
+
+cert_setup_enabled: yes
+certpush_user: certpush
+certpush_home: "/var/lib/{{ certpush_user }}"
+# Public keys allowed to log in as certpush (set in group_vars, e.g. the
+# lunarBeacon cert-renewal job's id_cert_push.pub). Must not be empty.
+certpush_authorized_keys: []
+# Optional authorized_keys options applied to every key, e.g. 'from="192.168.100.10"'.
+certpush_key_options: ""
+cert_dir: /etc/letsencrypt
+cert_backup_dir: "{{ cert_dir }}/backup"

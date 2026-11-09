@@ -12,3 +12,5 @@
       when: phoneHomePort is defined
     - role: syslog-configure-servers
       become: yes
+    - role: cert-setup
+      become: yes
