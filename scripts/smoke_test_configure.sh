@@ -188,10 +188,9 @@ if "kjl_ssh_keys" in host_vars:
     kjl_keys = host_vars["kjl_ssh_keys"]
 else:
     kjl_keys = [host_vars.get("kjl_ssh_key", host_vars.get("kenta_ssh_key", ""))]
-if isinstance(kjl_keys, str):
-    kjl_keys = [kjl_keys]
-if not kjl_keys or any(not str(k).strip() for k in (kjl_keys or [])):
-    missing.append("kjl_ssh_keys (at least one non-blank key)")
+# stage-5 joins kjl_ssh_keys as a list, so a scalar there is a broken value
+if not isinstance(kjl_keys, list) or not kjl_keys or any(not isinstance(k, str) or not k.strip() for k in kjl_keys):
+    missing.append("kjl_ssh_keys (a list with at least one non-blank key)")
 
 if missing:
     print("MISSING:" + ",".join(missing))
