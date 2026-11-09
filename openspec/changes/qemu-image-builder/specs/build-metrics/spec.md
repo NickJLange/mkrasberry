@@ -16,7 +16,7 @@ The system SHALL emit the captured per-phase timings after the final phase compl
 #### Scenario: Successful build emits timings before exit
 
 - **WHEN** a build completes successfully
-- **THEN** the per-phase timings are written before the process exits, with every phase `ok`
+- **THEN** the per-phase timings are written before the process exits, with every executed phase `ok` and any intentionally disabled phase (such as `upload` under `--no-upload`) `skipped`
 
 #### Scenario: Failed build still emits timings
 
