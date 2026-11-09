@@ -7,6 +7,9 @@
     - name: "Warm up"
       set_fact:
         provision_wifi_server: True
+        # May not need
+        container_user: "root"
+        container_group: "root"
     - name: DQ Check
       assert:
         that:
