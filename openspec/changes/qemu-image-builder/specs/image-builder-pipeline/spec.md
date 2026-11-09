@@ -35,7 +35,12 @@ The system SHALL boot the VM with the generic arm64 virt kernel identified by th
 
 #### Scenario: Kernel digest mismatch aborts the build
 
-- **WHEN** the fetched or cached kernel `Image` does not match the pinned digest
+- **WHEN** a cached kernel `Image` does not match the pinned digest
+- **THEN** the system discards it and re-fetches it from the active backend
+
+#### Scenario: No verified kernel aborts the build
+
+- **WHEN** no available copy of the kernel `Image` (cache or backend) matches the pinned digest
 - **THEN** the system exits with a non-zero status naming the `fetch` phase and does not start the VM
 
 ### Requirement: Headless first-boot configuration
@@ -68,7 +73,7 @@ The system SHALL reach the VM's SSH service only through a port forward bound to
 
 ### Requirement: Ansible apply against booted VM with connection-address override
 
-The system SHALL boot the configured image in a virtual machine and SHALL apply the bootstrap playbooks `initial-playbook-stage-1.yml` through `initial-playbook-stage-5.yml` to it, in that order, in two invocations. The bootstrap user is `local_ssh_user`. The first invocation runs `initial-playbook-stage-1.yml` with the bootstrap password. Because stage-1 installs `local_ssh_user`'s SSH key and may lock the password, the system SHALL then re-probe SSH as `local_ssh_user` with key authentication only (the operator's key via `ssh-agent`) and SHALL fail `ansible-apply` if that probe fails. The second invocation runs the canonical entrypoint `playbooks/image-build.yml`, which imports `initial-playbook-stage-2.yml` through `initial-playbook-stage-5.yml`, with key authentication and no password. Applying any other playbook (service, restore, or backup playbooks) SHALL NOT count as successful provisioning. The system SHALL connect to the VM through connection-only variables (`ansible_ssh_host`, `ansible_port`) and SHALL NOT override `ansible_host`, which keeps the target Pi's production address. The production address SHALL also be passed explicitly as `target_host_ip`. The `apt-refresh` phase SHALL run `apt-get clean` and then `apt-get update -o Acquire::AllowReleaseInfoChange=true` as separate commands before the entrypoint runs.
+The system SHALL boot the configured image in a virtual machine and SHALL apply the bootstrap playbooks `initial-playbook-stage-1.yml` through `initial-playbook-stage-5.yml` to it, in that order, in two invocations. The bootstrap user is `local_ssh_user`. The first invocation runs `initial-playbook-stage-1.yml` with the bootstrap password. Because stage-1 installs `local_ssh_user`'s SSH key and may lock the password, the system SHALL then re-probe SSH as `local_ssh_user` with key authentication only (the operator's key via `ssh-agent`) and SHALL fail `ansible-apply` if that probe fails. The second invocation runs the canonical entrypoint `playbooks/image-build.yml`, which imports `initial-playbook-stage-2.yml` through `initial-playbook-stage-5.yml`, with key authentication and no password. Applying any other playbook (service, restore, or backup playbooks) SHALL NOT count as successful provisioning. The system SHALL connect to the VM through connection-only variables (`ansible_ssh_host`, `ansible_port`) and SHALL NOT override `ansible_host`, which keeps the target Pi's production address. The production address SHALL also be passed explicitly as `target_host_ip`. The `apt-refresh` phase SHALL run `apt-get clean` and then `apt-get update -o Acquire::AllowReleaseInfoChange=true` as separate commands before stage-1 runs, authenticating and escalating with the bootstrap password as stage-1 does.
 
 #### Scenario: Runbooks apply against the VM, not the production address
 
