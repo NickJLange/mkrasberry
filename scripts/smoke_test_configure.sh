@@ -46,7 +46,7 @@ REQUIRED_VARS=(
 
 REQUIRED_ROLES=(
     "fix_sudoers"
-    "locales"
+    "ansible-locales"
     "mikolak-net.raspi_config"
     "Stouts.hostname"
     "msmtp"
