@@ -1,0 +1,134 @@
+---
+# Run as root inside a disposable Linux container, never on a managed host:
+# ansible-playbook -i localhost, -c local tests/cert-setup.yml
+- name: Exercise cert-setup against real filesystem and account state
+  hosts: localhost
+  gather_facts: false
+  vars:
+    cert_dir: /tmp/cert-setup-test
+    certpush_user: certpush_test
+    certpush_home: /tmp/certpush-test-home
+    certpush_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIErP4cB7DhXGzd7edARVLBbiPiFxy8PjxaTzNL4xo8Gs test-only"
+  tasks:
+    - name: Create a private Certbot account directory
+      ansible.builtin.file:
+        path: "{{ cert_dir }}/accounts"
+        state: directory
+        mode: "0700"
+
+    - name: Create a private ACME account key fixture
+      ansible.builtin.copy:
+        dest: "{{ cert_dir }}/accounts/private_key.json"
+        content: '{"test": "not a real key"}'
+        mode: "0600"
+
+    - name: Reject issuer state before provisioning or changing permissions
+      block:
+        - ansible.builtin.include_role:
+            name: cert-setup
+      rescue:
+        - ansible.builtin.set_fact:
+            rejected_certbot_accounts: "{{ 'Certbot' in ansible_failed_result.msg }}"
+
+    - name: Inspect account directory after rejection
+      ansible.builtin.stat:
+        path: "{{ cert_dir }}/accounts"
+      register: account_directory
+
+    - name: Inspect ACME key after rejection
+      ansible.builtin.stat:
+        path: "{{ cert_dir }}/accounts/private_key.json"
+      register: account_key
+
+    - name: Check whether the push account was created
+      ansible.builtin.command: "id {{ certpush_user }}"
+      register: push_account
+      changed_when: false
+      failed_when: false
+
+    - name: Verify rejection left private state and user accounts untouched
+      ansible.builtin.assert:
+        that:
+          - rejected_certbot_accounts | default(false)
+          - account_directory.stat.mode == '0700'
+          - account_directory.stat.uid == 0
+          - account_key.stat.mode == '0600'
+          - account_key.stat.uid == 0
+          - push_account.rc != 0
+
+    - name: Remove issuer fixture
+      ansible.builtin.file:
+        path: "{{ cert_dir }}"
+        state: absent
+
+    - name: Create an endpoint with hidden and ordinary certificate directories
+      ansible.builtin.file:
+        path: "{{ cert_dir }}/{{ item }}"
+        state: directory
+        mode: "0700"
+      loop:
+        - .staging
+        - archive
+
+    - name: Seed certificate fixtures with private permissions
+      ansible.builtin.copy:
+        dest: "{{ cert_dir }}/{{ item }}"
+        content: test-only
+        mode: "0600"
+      loop:
+        - .staging/.private.key
+        - .hidden.key
+        - archive/server.key
+        - server.cert
+
+    - name: Create the existing service certificate symlink
+      ansible.builtin.file:
+        src: archive/server.key
+        dest: "{{ cert_dir }}/server.key"
+        state: link
+
+    - name: Provision the endpoint
+      ansible.builtin.include_role:
+        name: cert-setup
+
+    - name: Inspect managed directory permissions and ownership
+      ansible.builtin.stat:
+        path: "{{ cert_dir }}/{{ item }}"
+      loop: ['', .staging, archive, backup]
+      register: directories
+
+    - name: Verify hidden and ordinary directories are usable by certpush
+      ansible.builtin.assert:
+        that:
+          - item.stat.pw_name == certpush_user
+          - item.stat.mode == '0755'
+      loop: "{{ directories.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Inspect installed certificate files
+      ansible.builtin.stat:
+        path: "{{ cert_dir }}/{{ item }}"
+      loop: [.staging/.private.key, .hidden.key, archive/server.key, server.cert]
+      register: certificates
+
+    - name: Verify service-readable permissions include hidden certificate files
+      ansible.builtin.assert:
+        that:
+          - item.stat.pw_name == certpush_user
+          - item.stat.mode == '0644'
+      loop: "{{ certificates.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Inspect service symlink
+      ansible.builtin.stat:
+        path: "{{ cert_dir }}/server.key"
+      register: service_link
+
+    - name: Verify the service symlink is preserved
+      ansible.builtin.assert:
+        that:
+          - service_link.stat.islnk
+          - service_link.stat.lnk_target == 'archive/server.key'

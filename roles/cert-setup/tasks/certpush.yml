@@ -4,6 +4,21 @@
 # services and containers on each host read them (HA, Node-RED, Vault, nginx,
 # rsyslog); there is no per-service secrecy boundary to enforce.
 
+- name: certpush - check for Certbot account state before making changes
+  stat:
+    path: "{{ cert_dir }}/accounts"
+    follow: false
+  register: certpush_accounts
+
+- name: certpush - reject Certbot issuer directories
+  assert:
+    that:
+      - not certpush_accounts.stat.exists
+    fail_msg: >-
+      Certbot account state exists at {{ cert_dir }}/accounts. This role is
+      only for distributed endpoint certificates; use a separate directory
+      without ACME account credentials. No provisioning changes have been made.
+
 - name: certpush - require at least one authorized key
   assert:
     that:
@@ -59,6 +74,7 @@
   find:
     paths: "{{ cert_dir }}"
     recurse: true
+    hidden: true
     file_type: directory
   register: certpush_subdirs
 
@@ -76,6 +92,7 @@
   find:
     paths: "{{ cert_dir }}"
     recurse: true
+    hidden: true
     file_type: file
   register: certpush_files
 
