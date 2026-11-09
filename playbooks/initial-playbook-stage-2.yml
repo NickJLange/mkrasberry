@@ -18,8 +18,14 @@
 
     - name: Default users - stop sessions/processes
       shell: |
-        loginctl terminate-user {{ item }} 2>/dev/null || true
-        pkill -KILL -u {{ item }} && echo KILLED || true
+        # rc 1 means nothing to stop; any other failure must stop the play
+        # before force-deleting the account.
+        loginctl terminate-user {{ item }} 2>/dev/null
+        rc=$?
+        if [ "$rc" -eq 0 ]; then echo KILLED; elif [ "$rc" -ne 1 ]; then exit "$rc"; fi
+        pkill -KILL -u {{ item }}
+        rc=$?
+        if [ "$rc" -eq 0 ]; then echo KILLED; elif [ "$rc" -ne 1 ]; then exit "$rc"; fi
       loop: "{{ poison_usernames }}"
       when: item in ansible_facts.getent_passwd
       register: poison_kill
@@ -49,12 +55,19 @@
       tags: [poison_users]
 
     - name: sudo group requires a password (per-user NOPASSWD rules live in sudoers.d)
-      lineinfile:
+      replace:
         path: /etc/sudoers
-        regexp: '^%sudo\s+ALL=\(ALL(:ALL)?\)\s+NOPASSWD:\s*ALL\s*$'
-        line: "%sudo\tALL=(ALL:ALL) ALL"
-        backrefs: true
+        regexp: '^[ \t]*%sudo[ \t].*NOPASSWD:.*$'
+        replace: "%sudo\tALL=(ALL:ALL) ALL"
         validate: "visudo -cf %s"
+      tags: [poison_users]
+
+    - name: sudo group - verify no NOPASSWD rule remains in /etc/sudoers
+      command: grep -En '^[[:blank:]]*%sudo[[:blank:]].*NOPASSWD' /etc/sudoers
+      register: sudo_nopasswd
+      changed_when: false
+      failed_when: sudo_nopasswd.rc != 1
+      when: not ansible_check_mode
       tags: [poison_users]
 
     - name: Install requisite packages (likely present)
