@@ -82,17 +82,17 @@ On successful completion of a build, the system SHALL upload the exported image 
 
 ### Requirement: Failed builds publish no built artifact
 
-On build failure, the system SHALL NOT publish a built artifact, checksum sidecar, manifest, or `latest.json` update for that invocation. Verified base-image mirror uploads made earlier in the same invocation are permitted. The system SHALL make a best-effort deletion of the staging objects it created, and SHALL provide a `prune --remote` operation that removes staging objects older than a safety threshold (default 24 hours).
+A built artifact is published only when the host's `latest.json` references it; objects under `built/` that no `latest.json` references are unpublished, whether staging (`.partial`) or final keys. On build failure, the system SHALL NOT update `latest.json`. Verified base-image mirror uploads made earlier in the same invocation are permitted. The system SHALL make a best-effort deletion of every staging and final-key object it created in that invocation, and SHALL provide a `prune --remote` operation that removes unreferenced `built/` objects (staging or final) older than a safety threshold (default 24 hours), which also covers objects left by a crash.
 
 #### Scenario: Failed build is not published
 
 - **WHEN** a build fails partway through any phase
-- **THEN** no built artifact, sidecar, or manifest is visible under a final key for that invocation and `latest.json` is unchanged; a base-image mirror upload made earlier in the same invocation may remain
+- **THEN** `latest.json` is unchanged, so nothing from that invocation is published, and the system has attempted to delete the staging and final-key objects it created; a base-image mirror upload made earlier in the same invocation may remain
 
 #### Scenario: Leftover staging objects are cleaned up
 
-- **WHEN** an operator runs `prune --remote` and the backend contains staging objects older than the threshold
-- **THEN** those staging objects are deleted and no published artifact or `latest.json` is touched
+- **WHEN** an operator runs `prune --remote` and the backend contains `built/` objects older than the threshold that no `latest.json` references
+- **THEN** those objects are deleted and no referenced artifact or `latest.json` is touched
 
 ### Requirement: Credentials sourced from a secret store
 
