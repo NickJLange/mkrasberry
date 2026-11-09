@@ -8,7 +8,7 @@
       raspi_config_replace_user:
          name: "{{ local_ssh_user }}"
          path_to_ssh_key: "/Users/{{ local_ssh_user }}/.ssh/id_rsa_stronger.pub"
-    - role: "locales"
+    - role: "ansible-locales"
   tasks:
     - name: Install requisite packages (likely present)
       apt:
