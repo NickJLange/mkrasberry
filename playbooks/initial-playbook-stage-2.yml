@@ -20,10 +20,10 @@
       shell: |
         # rc 1 means nothing to stop; any other failure must stop the play
         # before force-deleting the account.
-        loginctl terminate-user {{ item }} 2>/dev/null
+        loginctl terminate-user {{ item | quote }} 2>/dev/null
         rc=$?
         if [ "$rc" -eq 0 ]; then echo KILLED; elif [ "$rc" -ne 1 ]; then exit "$rc"; fi
-        pkill -KILL -u {{ item }}
+        pkill -KILL -u {{ item | quote }}
         rc=$?
         if [ "$rc" -eq 0 ]; then echo KILLED; elif [ "$rc" -ne 1 ]; then exit "$rc"; fi
       loop: "{{ poison_usernames }}"
@@ -57,8 +57,9 @@
     - name: sudo group requires a password (per-user NOPASSWD rules live in sudoers.d)
       replace:
         path: /etc/sudoers
-        regexp: '^[ \t]*%sudo[ \t].*NOPASSWD:.*$'
-        replace: "%sudo\tALL=(ALL:ALL) ALL"
+        # Only drop the NOPASSWD tag; keep each rule's command list as is.
+        regexp: '^([ \t]*%sudo[ \t].*)NOPASSWD:(.*)$'
+        replace: '\1PASSWD:\2'
         validate: "visudo -cf %s"
       tags: [poison_users]
 
