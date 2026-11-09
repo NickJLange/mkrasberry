@@ -74,7 +74,11 @@
               export LC_MESSAGES=en_US.UTF-8
             mode: "0644"
 
-        - name: Fix macOS LC_CTYPE=UTF-8 warnings in the system-wide bashrc
+        # macOS Terminal sends LC_CTYPE=UTF-8, which is not a Debian locale. Bash
+        # validates it before any rc file runs, so its own one-line startup warning
+        # stays; this fixes everything started from the shell afterwards (perl/apt
+        # "Setting locale failed", child shells, editors).
+        - name: Map macOS LC_CTYPE=UTF-8 to en_US.UTF-8 for programs run from bash
           blockinfile:
             path: "{{ '/etc/bashrc' if ansible_os_family == 'RedHat' else '/etc/bash.bashrc' }}"
             insertafter: EOF
