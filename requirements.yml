@@ -1,3 +1,8 @@
 ---
 collections:
   - name: ansible.posix
+
+roles:
+  # Used by playbooks/initial-playbook-stage-1.yml; pulls in oefenweb.locales.
+  - name: mikolak-net.raspi_config
+    version: 1.2.3
