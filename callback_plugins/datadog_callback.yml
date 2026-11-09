@@ -1,3 +1,1 @@
----
-#api_key: "{{ datadog_logging_key }}"
-api_key: "REDACTED_DATADOG_API_KEY"
+../mkrasberry_config/callback_plugins/datadog_callback.yml
