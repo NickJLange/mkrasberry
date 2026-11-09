@@ -4,7 +4,7 @@
   become: true
   roles:
     - role: "fix_sudoers"
-    - role: "locales"
+    - role: "ansible-locales"
   tasks:
     - name: Install requisite packages (likely present)
       apt:
