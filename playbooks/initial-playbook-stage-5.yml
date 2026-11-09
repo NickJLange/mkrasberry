@@ -25,7 +25,31 @@
       register: kjl_legacy
       check_mode: false
       changed_when: false
-      failed_when: kjl_legacy.rc == 0
+      # rc 2 is getent's "not found"; any other rc is a lookup error, not proof
+      # that kenta is gone.
+      failed_when: kjl_legacy.rc != 2
+      tags: [users]
+
+    - name: kjl - resolve authorized keys (kjl_ssh_keys list, else legacy single key)
+      set_fact:
+        kjl_resolved_keys: "{{ kjl_ssh_keys | default([kjl_ssh_key | default(kenta_ssh_key | default(''))]) }}"
+      tags: [users]
+
+    # The key task below is exclusive: an empty list would remove every key.
+    - name: kjl - require at least one non-blank authorized key
+      assert:
+        that:
+          - kjl_resolved_keys | length > 0
+          - kjl_resolved_keys | map('trim') | select('equalto', '') | list | length == 0
+        fail_msg: Set kjl_ssh_keys (or kjl_ssh_key) to at least one non-blank public key.
+      tags: [users]
+
+    - name: kjl - check whether the account exists
+      command: getent passwd kjl
+      register: kjl_existing
+      check_mode: false
+      changed_when: false
+      failed_when: kjl_existing.rc not in [0, 2]
       tags: [users]
 
     - name: kjl - ensure account (no supplementary groups, password locked)
@@ -41,11 +65,12 @@
     - name: kjl - authorized keys (exclusive; kjl_ssh_keys list, else legacy single key)
       ansible.posix.authorized_key:
         user: kjl
-        key: "{{ kjl_ssh_keys | default([kjl_ssh_key | default(kenta_ssh_key)]) | join('\n') }}"
+        key: "{{ kjl_resolved_keys | join('\n') }}"
         comment: kjl
         exclusive: true
-      # in --check a brand-new kjl only exists in simulation, so the lookup fails
-      ignore_errors: "{{ ansible_check_mode }}"
+      # In --check a brand-new kjl exists only in simulation, so the key task
+      # can't look it up; skip just that case and keep every other failure.
+      when: not (ansible_check_mode and kjl_existing.rc == 2)
       tags: [users]
 
     - name: kjl - sudo only where explicitly enabled (host_vars kjl_sudo=true)
