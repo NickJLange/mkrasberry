@@ -7,15 +7,41 @@ ifneq ($(host_ip_string),)
 host_ip_string :=  "-e ansible_ssh_host=${host_ip_override}"
 endif
 
+# Python env used for the localhost-delegated Vault lookups (needs hvac installed).
+# Override with `make ... VENV_PATH=/path/to/venv` or by exporting VENV_PATH.
+VENV_PATH ?= /Users/njl/dev/src/overlord/.venv
+
+# Cert subdomain for internal_certs_update_endpoints:
+#   subdomain=wisconsin.nicklange.family   -> used verbatim
+#   dnsgroup=wisconsin                     -> wisconsin.nicklange.family
+#   neither                                -> each host's inventory dns_subdomain
+# NOTE: these are make variables, so they must be expanded with $(...) here; a
+# shell-style $${dnsgroup} expands to nothing (make does not export them) and
+# would pass an empty subdomain, which the role happily turns into "ec256/_.".
+dns_subdomain_base ?= nicklange.family
+ifneq ($(strip $(subdomain)),)
+cert_subdomain := $(strip $(subdomain))
+else ifneq ($(strip $(dnsgroup)),)
+cert_subdomain := $(strip $(dnsgroup)).$(dns_subdomain_base)
+else
+cert_subdomain := {{ dns_subdomain }}
+endif
+
 install_os:
 	echo ${OSIMAGE}
-	echo time sudo dd if=${OSIMAGE} of=/dev/disk2 bs=1m conv=sync
+	echo time sudo dd if=${OSIMAGE} of=/dev/disk2 bs=1m conv=sync status=progress
 	diskutil list
 
 post:
 	if [ -d ${BASE} ]; then \
 		  ./post_install.sh;\
 		fi
+
+test:
+	@./scripts/smoke_test_configure.sh "${hostlist}"
+
+test-self-test:
+	@./scripts/smoke_test_configure.sh --self-test
 
 configure:
 	@test -n "${hostlist}" || { echo "Error: hostlist is required (e.g., make configure hostlist=myhost newbie=192.168.1.100)"; exit 1; }
@@ -35,7 +61,7 @@ configure:
 	@echo "Installing wireguard - make sure to restore from backup"
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/fix-locale.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-install-simple.yml
-	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e dnsgroup=${dnsgroup}
+	VENV_PATH=$(VENV_PATH) ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e subdomain='$(cert_subdomain)'
 	ANSIBLE_HOST_KEY_CHECKING=False ansible -vv -b -m reboot ${hostlist} ${host_ip_string}
 	#reboot for DNS to kick in / make sure everything comes up
 
