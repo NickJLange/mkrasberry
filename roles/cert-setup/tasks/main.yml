@@ -1,0 +1,6 @@
+---
+
+- import_tasks: certpush.yml
+  become: yes
+  when: cert_setup_enabled
+  tags: [cert_setup]
