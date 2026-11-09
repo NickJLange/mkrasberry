@@ -46,7 +46,8 @@ REQUIRED_VARS=(
 
 REQUIRED_ROLES=(
     "fix_sudoers"
-    "ansible-locales"
+    # stage-1 names it "locales" (local symlink) until #60 renames it "ansible-locales"
+    "ansible-locales|locales"
     "mikolak-net.raspi_config"
     "Stouts.hostname"
     "msmtp"
@@ -110,11 +111,15 @@ for entry in json.load(sys.stdin):
 
     for role in "${REQUIRED_ROLES[@]}"; do
         local found=0
-        for sp in "${search_paths[@]}"; do
-            if [ -d "${sp}/${role}" ]; then
-                found=1
-                break
-            fi
+        local name
+        IFS='|' read -ra role_names <<< "$role"
+        for name in "${role_names[@]}"; do
+            for sp in "${search_paths[@]}"; do
+                if [ -d "${sp}/${name}" ]; then
+                    found=1
+                    break 2
+                fi
+            done
         done
 
         if [ $found -eq 1 ]; then
@@ -177,9 +182,16 @@ has_subdomain = bool(cert_subdomain or host_vars.get("subdomain") or host_vars.g
 if not has_subdomain:
     missing.append("dns_subdomain (or subdomain)")
 
-# stage-5 accepts kjl_ssh_keys, kjl_ssh_key or the legacy kenta_ssh_key
-if not any(host_vars.get(v) for v in ("kjl_ssh_keys", "kjl_ssh_key", "kenta_ssh_key")):
-    missing.append("kjl_ssh_keys (or kjl_ssh_key)")
+# Same resolution and check as stage-5: kjl_ssh_keys if defined, else
+# [kjl_ssh_key or legacy kenta_ssh_key]; at least one key and none blank.
+if "kjl_ssh_keys" in host_vars:
+    kjl_keys = host_vars["kjl_ssh_keys"]
+else:
+    kjl_keys = [host_vars.get("kjl_ssh_key", host_vars.get("kenta_ssh_key", ""))]
+if isinstance(kjl_keys, str):
+    kjl_keys = [kjl_keys]
+if not kjl_keys or any(not str(k).strip() for k in (kjl_keys or [])):
+    missing.append("kjl_ssh_keys (at least one non-blank key)")
 
 if missing:
     print("MISSING:" + ",".join(missing))
