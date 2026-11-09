@@ -38,7 +38,7 @@ post:
 		fi
 
 test:
-	@VENV_PATH=$(VENV_PATH) CERT_SUBDOMAIN='$(cert_subdomain)' ./scripts/smoke_test_configure.sh "${hostlist}"
+	@VENV_PATH='$(VENV_PATH)' CERT_SUBDOMAIN='$(cert_subdomain)' ./scripts/smoke_test_configure.sh "${hostlist}"
 
 test-self-test:
 	@./scripts/smoke_test_configure.sh --self-test
@@ -61,7 +61,7 @@ configure:
 	@echo "Installing wireguard - make sure to restore from backup"
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/fix-locale.yml
 	ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -e hostlist=${hostlist} playbooks/wireguard-install-simple.yml
-	VENV_PATH=$(VENV_PATH) ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e subdomain='$(cert_subdomain)'
+	VENV_PATH='$(VENV_PATH)' ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook ${host_ip_string} -e hostlist=${hostlist} playbooks/internal_certs_update_endpoints.yml -e subdomain='$(cert_subdomain)'
 	ANSIBLE_HOST_KEY_CHECKING=False ansible -vv -b -m reboot ${hostlist} ${host_ip_string}
 	#reboot for DNS to kick in / make sure everything comes up
 
