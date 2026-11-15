@@ -21,6 +21,28 @@
   when: not quadlet_unit.stat.exists and not ansible_check_mode
   tags: container_systemd_start
 
+# Before the reload: true when the loaded unit predates the .container on disk,
+# e.g. a run that wrote the unit but failed before reloading, after which the
+# service restarted itself on the old definition. Forces a restart below.
+- name: Check whether {{ container_friendly_name }}.service runs an outdated unit
+  shell: |
+    {% if container_user != 'root' %}
+    export XDG_RUNTIME_DIR=/run/user/$(id -u)
+    systemctl --user show -p NeedDaemonReload --value {{ container_friendly_name | quote }}.service
+    {% else %}
+    systemctl show -p NeedDaemonReload --value {{ container_friendly_name | quote }}.service
+    {% endif %}
+  args:
+    chdir: /
+    executable: /bin/bash
+  register: quadlet_need_reload
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: yes
+  become_user: "{{ container_user }}"
+  tags: container_systemd_start
+
 - block:
   - name: snag the userid for rootless systemctl commands
     shell: "id -u {{ container_user }}"
@@ -103,6 +125,20 @@
   tags: container_systemd_start
   when: container_user == "root"
 
+# Quadlet only pulls a missing image (Pull=missing) and AutoUpdate= is not used,
+# so pull here as master's pre did; a new image ID triggers the restart below.
+- name: Pull {{ image_name }}
+  command: "{{ podman_path }} pull --quiet {{ image_name }}"
+  args:
+    chdir: /
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ container_user_pid.stdout | default('0') }}"
+  register: quadlet_pull
+  changed_when: false
+  become: yes
+  become_user: "{{ container_user }}"
+  tags: container_systemd_start
+
 # Restart only when something the container reads changed since it last started,
 # so an unchanged re-run causes no downtime. Inputs: the Quadlet unit and its
 # drop-ins, the envfile, container_required_paths (certs etc.), and the service
@@ -127,10 +163,15 @@
     since=${since#@}
     reason=""
     [ -n "$since" ] || reason="unknown start time"
+    [ {{ need_reload | quote }} != yes ] || reason="loaded unit was older than the .container file"
     for f in {{ restart_inputs | map('quote') | join(' ') }}; do
       [ -z "$reason" ] || break
       [ -e "$f" ] || continue
-      if [ -n "$(find -L "$f" -newermt "@$since" -print -quit 2>/dev/null || true)" ]; then
+      # ctime, not mtime: copy tools (scp -p, rsync -t) cannot backdate it, and
+      # clock skew on the sending host cannot put it in the future. Check the
+      # link itself (re-pointed symlink) and what it points to.
+      if [ -n "$(find "$f" -newerct "@$since" -print -quit 2>/dev/null || true)" ] ||
+         [ -n "$(find -L "$f" -newerct "@$since" -print -quit 2>/dev/null || true)" ]; then
         reason="$f changed"
       fi
     done
@@ -151,6 +192,7 @@
     chdir: /
     executable: /bin/bash
   vars:
+    need_reload: "{{ quadlet_need_reload.stdout | default('') | trim }}"
     restart_inputs: >-
       {{ [quadlet_path ~ '/' ~ container_friendly_name ~ '.container',
           quadlet_path ~ '/' ~ container_friendly_name ~ '.container.d',
