@@ -13,13 +13,9 @@
       - quadlet_path is defined
       - podman_path is defined
 
-- name: Check whether {{ container_user }} exists
-  command: "id -u {{ container_user }}"
-  register: dbus_auth_proxy_user
-  changed_when: false
-  failed_when: false
-  check_mode: false
-
+# Runs after ansible-podman-systemd-generic pre (which sets podman_path), so
+# container_user exists here: pre fails a real run without it and ends --check
+# for a host where it would only be simulated.
 - name: Read podman version as {{ container_user }}
   command: "{{ podman_path }} --version"
   args:
@@ -29,7 +25,6 @@
   check_mode: false
   become: yes
   become_user: "{{ container_user }}"
-  when: dbus_auth_proxy_user.rc == 0
 
 - name: Require podman with Quadlet .build support (>= 5.2)
   assert:
@@ -38,7 +33,6 @@
     fail_msg: "podman {{ podman_version }} cannot run Quadlet .build units; dbus-auth-proxy needs 5.2 or newer."
   vars:
     podman_version: "{{ dbus_auth_proxy_podman_version.stdout | regex_search('[0-9]+\\.[0-9]+(\\.[0-9]+)?') }}"
-  when: dbus_auth_proxy_user.rc == 0
 
 - name: Read {{ container_user }} uid for systemctl --user
   command: "id -u {{ container_user }}"
@@ -217,14 +211,17 @@
   # environment (e.g. a run interrupted between install and restart), so
   # compare the bus target the container actually uses.
   - name: Read the running proxy's system bus target
-    shell: >-
-      XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} podman inspect systemd-dbus-auth-proxy --format '{{ '{{' }}range .Config.Env{{ '}}' }}{{ '{{' }}println .{{ '}}' }}{{ '{{' }}end{{ '}}' }}' 2>/dev/null |
-      sed -n 's/^SYSTEM_DBUS=//p'
+    shell: |
+      set -o pipefail
+      export XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }}
+      # No container yet (first install): nothing to compare
+      {{ podman_path }} container exists systemd-dbus-auth-proxy || exit 0
+      {{ podman_path }} inspect systemd-dbus-auth-proxy --format '{{ '{{' }}range .Config.Env{{ '}}' }}{{ '{{' }}println .{{ '}}' }}{{ '{{' }}end{{ '}}' }}' |
+        sed -n 's/^SYSTEM_DBUS=//p'
     args:
       executable: /bin/bash
     register: dbus_auth_proxy_running_bus
     changed_when: false
-    failed_when: false
 
   - name: Restart dbus-auth-proxy after a change
     shell: "XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user restart dbus-auth-proxy.service"

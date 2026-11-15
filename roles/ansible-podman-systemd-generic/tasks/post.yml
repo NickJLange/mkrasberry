@@ -23,8 +23,8 @@
 
 - name: Fail when a required host path is missing or unreadable by {{ container_user }}
   fail:
-    msg: "{{ container_friendly_name }} requires {{ item.item }}, which does not exist or is not readable by {{ container_user }}."
-  when: not item.stat.exists or not item.stat.readable
+    msg: "{{ container_friendly_name }} requires {{ item.item }}, which does not exist or is not readable (or, for a directory, not searchable) by {{ container_user }}."
+  when: not item.stat.exists or not item.stat.readable or (item.stat.isdir and not item.stat.executable)
   loop: "{{ required_paths.results }}"
   loop_control:
     label: "{{ item.item }}"
