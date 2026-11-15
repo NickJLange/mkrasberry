@@ -1,6 +1,6 @@
 ---
 
-# systemd.yml - Retire the legacy generated unit, reload systemd, and restart the Quadlet service
+# systemd.yml - Retire the legacy generated unit, reload systemd, and (re)start the Quadlet service when needed
 
 - name: Check that the role deployed a Quadlet unit
   stat:
@@ -65,12 +65,6 @@
     args:
       executable: /bin/bash
 
-  - name: restart Quadlet systemd service for rootless user
-    shell: "XDG_RUNTIME_DIR=/var/run/user/{{ container_user_pid.stdout }} systemctl --user restart {{ container_friendly_name }}.service"
-    become_user: "{{ container_user }}"
-    args:
-      executable: /bin/bash
-
   become: yes
   become_user: "{{ container_user }}"
   tags: container_systemd_start
@@ -104,13 +98,72 @@
       daemon_reload: yes
       scope: "{{ systemd_scope }}"
 
-  - name: restart Quadlet systemd service for root
-    systemd:
-      name: "{{ container_friendly_name }}.service"
-      state: restarted
-      scope: "{{ systemd_scope }}"
-
   become: yes
   become_user: root
   tags: container_systemd_start
   when: container_user == "root"
+
+# Restart only when something the container reads changed since it last started,
+# so an unchanged re-run causes no downtime. Inputs: the Quadlet unit and its
+# drop-ins, the envfile, container_required_paths (certs etc.), and the service
+# role's container_restart_watch (configs it renders). Also restarts when the
+# local image differs from the running one, and starts the unit if it is down.
+- name: Start or restart {{ container_friendly_name }}.service if needed
+  shell: |
+    set -euo pipefail
+    {% if container_user != 'root' %}
+    export XDG_RUNTIME_DIR=/run/user/$(id -u)
+    sc="systemctl --user"
+    {% else %}
+    sc="systemctl"
+    {% endif %}
+    unit={{ container_friendly_name | quote }}.service
+    if ! $sc is-active --quiet "$unit"; then
+      $sc start "$unit"
+      echo "started: $unit was not running"
+      exit 0
+    fi
+    since=$($sc show -p ActiveEnterTimestamp --timestamp=unix --value "$unit")
+    since=${since#@}
+    reason=""
+    [ -n "$since" ] || reason="unknown start time"
+    for f in {{ restart_inputs | map('quote') | join(' ') }}; do
+      [ -z "$reason" ] || break
+      [ -e "$f" ] || continue
+      if [ -n "$(find -L "$f" -newermt "@$since" -print -quit 2>/dev/null || true)" ]; then
+        reason="$f changed"
+      fi
+    done
+    if [ -z "$reason" ]; then
+      running=$({{ podman_path }} ps --filter label=PODMAN_SYSTEMD_UNIT="$unit" --format '{{ '{{' }}.ImageID{{ '}}' }}' | head -n1)
+      local_id=$({{ podman_path }} image inspect --format '{{ '{{' }}.Id{{ '}}' }}' {{ image_name | quote }} 2>/dev/null || true)
+      if [ -n "$running" ] && [ -n "$local_id" ]; then
+        case "${local_id#sha256:}" in "${running#sha256:}"*) ;; *) reason="image {{ image_name }} updated";; esac
+      fi
+    fi
+    if [ -n "$reason" ]; then
+      $sc restart "$unit"
+      echo "restarted: $reason"
+    else
+      echo "unchanged"
+    fi
+  args:
+    chdir: /
+    executable: /bin/bash
+  vars:
+    restart_inputs: >-
+      {{ [quadlet_path ~ '/' ~ container_friendly_name ~ '.container',
+          quadlet_path ~ '/' ~ container_friendly_name ~ '.container.d',
+          container_env_file]
+         + (container_required_paths | default([]))
+         + (container_restart_watch | default([])) }}
+  register: quadlet_service_start
+  changed_when: quadlet_service_start.stdout != 'unchanged'
+  become: yes
+  become_user: "{{ container_user }}"
+  tags: container_systemd_start
+
+- debug:
+    msg: "{{ container_friendly_name }}.service: {{ quadlet_service_start.stdout }}"
+  when: quadlet_service_start.stdout is defined
+  tags: container_systemd_start

@@ -23,3 +23,7 @@ container_home_url: https://nodered.org/
 container_required_paths:
   - /etc/letsencrypt/server.key
   - /etc/letsencrypt/server.cert
+
+# Rendered configs; a change restarts the service (generic post)
+container_restart_watch:
+  - "{{ container_conf_dir }}/settings.js"
