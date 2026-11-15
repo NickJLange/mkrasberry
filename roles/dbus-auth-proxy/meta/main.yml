@@ -1,0 +1,16 @@
+---
+
+dependencies: []
+
+galaxy_info:
+  author: Nick Lange
+  company: Private
+  description: Rootless D-Bus auth proxy (5L-Labs/dbus-auth-proxy) as Quadlet units, built on the host
+  license: MIT
+  min_ansible_version: 2.8
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+  galaxy_tags:
+    - system

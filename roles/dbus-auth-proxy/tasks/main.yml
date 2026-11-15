@@ -1,0 +1,250 @@
+---
+
+# Installs 5L-Labs/dbus-auth-proxy for container_user, the same way the fork's
+# quadlet/install.sh does: the fork's own .container unit plus a .build unit
+# rendered with this checkout's path, so podman builds the image on the host.
+
+- name: "Check critical variables are defined."
+  assert:
+    that:
+      - container_user is defined
+      - container_group is defined
+      - container_prefix is defined
+      - quadlet_path is defined
+      - podman_path is defined
+
+# Runs after ansible-podman-systemd-generic pre (which sets podman_path), so
+# container_user exists here: pre fails a real run without it and ends --check
+# for a host where it would only be simulated.
+- name: Read podman version as {{ container_user }}
+  command: "{{ podman_path }} --version"
+  args:
+    chdir: /
+  register: dbus_auth_proxy_podman_version
+  changed_when: false
+  check_mode: false
+  become: yes
+  become_user: "{{ container_user }}"
+
+- name: Require podman with Quadlet .build support (>= 5.2)
+  assert:
+    that:
+      - podman_version is version('5.2', '>=')
+    fail_msg: "podman {{ podman_version }} cannot run Quadlet .build units; dbus-auth-proxy needs 5.2 or newer."
+  vars:
+    podman_version: "{{ dbus_auth_proxy_podman_version.stdout | regex_search('[0-9]+\\.[0-9]+(\\.[0-9]+)?') }}"
+
+- name: Read {{ container_user }} uid for systemctl --user
+  command: "id -u {{ container_user }}"
+  register: dbus_auth_proxy_uid
+  changed_when: false
+  check_mode: false
+
+###############################################################################
+################################# CHECKOUT ####################################
+###############################################################################
+
+- name: Install git for the pinned checkout
+  apt:
+    name: git
+    state: present
+  become: yes
+  become_user: root
+
+- name: Create source directory
+  file:
+    path: "{{ dbus_auth_proxy_src | dirname }}"
+    state: directory
+    mode: 0755
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  become: yes
+
+- name: Check out dbus-auth-proxy {{ dbus_auth_proxy_version[:7] }}
+  git:
+    repo: "{{ dbus_auth_proxy_repo }}"
+    dest: "{{ dbus_auth_proxy_src }}"
+    version: "{{ dbus_auth_proxy_version }}"
+  register: dbus_auth_proxy_checkout
+  become: yes
+  become_user: "{{ container_user }}"
+
+###############################################################################
+################################### UNITS #####################################
+###############################################################################
+
+- name: Read the fork's build unit template
+  slurp:
+    src: "{{ dbus_auth_proxy_src }}/quadlet/dbus-auth-proxy.build.in"
+  register: dbus_auth_proxy_build_in
+  become: yes
+  # Nothing is checked out yet on a first --check run.
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Install dbus-auth-proxy.build (build context = checkout)
+  copy:
+    content: "{{ dbus_auth_proxy_build_in.content | b64decode | replace('@REPO_DIR@', dbus_auth_proxy_src) }}"
+    dest: "{{ quadlet_path }}/dbus-auth-proxy.build"
+    mode: 0644
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  register: dbus_auth_proxy_build_unit
+  become: yes
+  when: dbus_auth_proxy_build_in.content is defined
+
+- name: Install the fork's dbus-auth-proxy.container
+  copy:
+    remote_src: yes
+    src: "{{ dbus_auth_proxy_src }}/quadlet/dbus-auth-proxy.container"
+    dest: "{{ quadlet_path }}/dbus-auth-proxy.container"
+    mode: 0644
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+  register: dbus_auth_proxy_container_unit
+  become: yes
+  ignore_errors: "{{ ansible_check_mode }}"
+
+###############################################################################
+############################ OPTIONAL BLUEZ FILTER ############################
+###############################################################################
+
+- block:
+  - name: Install xdg-dbus-proxy
+    apt:
+      name: xdg-dbus-proxy
+      state: present
+    become: yes
+    become_user: root
+
+  - name: Create systemd user unit directory
+    file:
+      path: "{{ dbus_auth_proxy_user_unit_dir }}"
+      state: directory
+      mode: 0755
+      owner: "{{ container_user }}"
+      group: "{{ container_group }}"
+
+  - name: Install the fork's dbus-filter.service
+    copy:
+      remote_src: yes
+      src: "{{ dbus_auth_proxy_src }}/quadlet/dbus-filter.service"
+      dest: "{{ dbus_auth_proxy_user_unit_dir }}/dbus-filter.service"
+      mode: 0644
+      owner: "{{ container_user }}"
+      group: "{{ container_group }}"
+    register: dbus_auth_proxy_filter_service
+
+  - name: Create dbus-auth-proxy drop-in directory
+    file:
+      path: "{{ quadlet_path }}/dbus-auth-proxy.container.d"
+      state: directory
+      mode: 0755
+      owner: "{{ container_user }}"
+      group: "{{ container_group }}"
+
+  - name: Install the fork's filter.conf drop-in
+    copy:
+      remote_src: yes
+      src: "{{ dbus_auth_proxy_src }}/quadlet/dbus-auth-proxy.container.d/filter.conf"
+      dest: "{{ quadlet_path }}/dbus-auth-proxy.container.d/filter.conf"
+      mode: 0644
+      owner: "{{ container_user }}"
+      group: "{{ container_group }}"
+    register: dbus_auth_proxy_filter_dropin
+  become: yes
+  ignore_errors: "{{ ansible_check_mode }}"
+  when: dbus_auth_proxy_filter | bool
+
+- block:
+  - name: Check for an installed dbus-filter.service
+    stat:
+      path: "{{ dbus_auth_proxy_user_unit_dir }}/dbus-filter.service"
+    register: dbus_auth_proxy_filter_installed
+
+  - name: Stop and disable dbus-filter
+    shell: "XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user disable --now dbus-filter.service"
+    args:
+      executable: /bin/bash
+    become_user: "{{ container_user }}"
+    when: dbus_auth_proxy_filter_installed.stat.exists
+
+  - name: Remove the filter drop-in and dbus-filter.service
+    file:
+      path: "{{ item }}"
+      state: absent
+    loop:
+      - "{{ quadlet_path }}/dbus-auth-proxy.container.d/filter.conf"
+      - "{{ dbus_auth_proxy_user_unit_dir }}/dbus-filter.service"
+    register: dbus_auth_proxy_filter_removed
+  become: yes
+  when: not (dbus_auth_proxy_filter | bool)
+
+###############################################################################
+############################ RELOAD AND (RE)START #############################
+###############################################################################
+
+- block:
+  - name: systemd --user daemon-reload
+    shell: "XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user daemon-reload"
+    args:
+      executable: /bin/bash
+    changed_when: false
+
+  - name: Enable and (re)start dbus-filter
+    shell: >-
+      XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user enable dbus-filter.service &&
+      XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user {{ 'restart' if dbus_auth_proxy_filter_service is changed else 'start' }} dbus-filter.service
+    args:
+      executable: /bin/bash
+    changed_when: dbus_auth_proxy_filter_service is changed
+    when: dbus_auth_proxy_filter | bool
+
+  # The build unit is a oneshot that stays active; restarting it rebuilds the
+  # image. Only do that when the code or the build definition changed.
+  - name: Rebuild the dbus-auth-proxy image
+    shell: "XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user restart dbus-auth-proxy-build.service"
+    args:
+      executable: /bin/bash
+    when: dbus_auth_proxy_checkout is changed or dbus_auth_proxy_build_unit is changed
+
+  # Files can be up to date while the running container still has the old
+  # environment (e.g. a run interrupted between install and restart), so
+  # compare the bus target the container actually uses.
+  - name: Read the running proxy's system bus target
+    shell: |
+      set -o pipefail
+      export XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }}
+      # No container yet (first install): nothing to compare
+      {{ podman_path }} container exists systemd-dbus-auth-proxy || exit 0
+      {{ podman_path }} inspect systemd-dbus-auth-proxy --format '{{ '{{' }}range .Config.Env{{ '}}' }}{{ '{{' }}println .{{ '}}' }}{{ '{{' }}end{{ '}}' }}' |
+        sed -n 's/^SYSTEM_DBUS=//p'
+    args:
+      executable: /bin/bash
+    register: dbus_auth_proxy_running_bus
+    changed_when: false
+
+  - name: Restart dbus-auth-proxy after a change
+    shell: "XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user restart dbus-auth-proxy.service"
+    args:
+      executable: /bin/bash
+    register: dbus_auth_proxy_restarted
+    when: >-
+      dbus_auth_proxy_checkout is changed or dbus_auth_proxy_build_unit is changed or
+      dbus_auth_proxy_container_unit is changed or dbus_auth_proxy_filter_dropin is changed or
+      dbus_auth_proxy_filter_service is changed or dbus_auth_proxy_filter_removed is changed or
+      (dbus_auth_proxy_running_bus.stdout | length > 0 and
+       dbus_auth_proxy_running_bus.stdout != ('/run/dbus-filter/bus' if dbus_auth_proxy_filter | bool else '/run/dbus/system_bus_socket'))
+
+  - name: Make sure dbus-auth-proxy is running
+    shell: >-
+      XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user is-active --quiet dbus-auth-proxy.service ||
+      { XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user start dbus-auth-proxy.service && echo started; }
+    args:
+      executable: /bin/bash
+    register: dbus_auth_proxy_started
+    changed_when: "'started' in dbus_auth_proxy_started.stdout"
+    when: dbus_auth_proxy_restarted is skipped
+
+  become: yes
+  become_user: "{{ container_user }}"
+  when: not ansible_check_mode
