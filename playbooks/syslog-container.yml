@@ -9,6 +9,10 @@
         container_group: "syslogd"
         image_name: "docker.io/balabit/syslog-ng:latest"
         container_friendly_name: "syslog-collector"
+        # Existing hosts keep syslogd's home, logs and disk-buffer here (old role
+        # default); the generic default would move them and usermod -d fails
+        # while the legacy unit runs as syslogd.
+        container_prefix: "/usr/local/syslog-ng"
         container_home_url: https://www.syslog-ng.com/products/open-source-log-management/
       tags: key_vars
   tasks:
