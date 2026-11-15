@@ -26,4 +26,5 @@ container_required_paths:
 
 # Rendered configs; a change restarts the service (generic post)
 container_restart_watch:
-  - "{{ container_conf_dir }}/settings.js"
+  # Spelled out rather than container_conf_dir, which the generic role also defines
+  - "{{ container_prefix }}/data/settings.js"
