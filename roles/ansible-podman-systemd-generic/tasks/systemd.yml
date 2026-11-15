@@ -41,21 +41,26 @@
   when: not ansible_check_mode
   tags: container_systemd_start
 
-# Before the reload: true when the loaded unit predates the .container on disk,
-# e.g. a run that wrote the unit but failed before reloading, after which the
-# service restarted itself on the old definition. Forces a restart below.
-- name: Check whether {{ container_friendly_name }}.service runs an outdated unit
+# Before the reload: record whether the loaded unit predates the .container on
+# disk (NeedDaemonReload, e.g. an earlier run wrote the unit but failed before
+# reloading) and a hash of Quadlet's generated unit. The restart task compares
+# that hash after the reload, which catches changes that leave no newer file
+# behind, such as a removed .container.d drop-in.
+- name: Record the loaded state of {{ container_friendly_name }}.service
   shell: |
     {% if container_user != 'root' %}
     export XDG_RUNTIME_DIR=/run/user/$(id -u)
     systemctl --user show -p NeedDaemonReload --value {{ container_friendly_name | quote }}.service
+    gen=$XDG_RUNTIME_DIR/systemd/generator
     {% else %}
     systemctl show -p NeedDaemonReload --value {{ container_friendly_name | quote }}.service
+    gen=/run/systemd/generator
     {% endif %}
+    cat "$gen"/{{ container_friendly_name | quote }}.service 2>/dev/null | sha256sum | cut -d' ' -f1
   args:
     chdir: /
     executable: /bin/bash
-  register: quadlet_need_reload
+  register: quadlet_loaded_state
   changed_when: false
   failed_when: false
   check_mode: false
@@ -156,8 +161,10 @@
     {% if container_user != 'root' %}
     export XDG_RUNTIME_DIR=/run/user/$(id -u)
     sc="systemctl --user"
+    gen=$XDG_RUNTIME_DIR/systemd/generator
     {% else %}
     sc="systemctl"
+    gen=/run/systemd/generator
     {% endif %}
     unit={{ container_friendly_name | quote }}.service
     if ! $sc is-active --quiet "$unit"; then
@@ -170,6 +177,9 @@
     reason=""
     [ -n "$since" ] || reason="unknown start time"
     [ {{ need_reload | quote }} != yes ] || reason="loaded unit was older than the .container file"
+    now_hash=$(cat "$gen"/{{ container_friendly_name | quote }}.service 2>/dev/null | sha256sum | cut -d' ' -f1)
+    [ -n "$reason" ] || [ -z {{ loaded_hash | quote }} ] || [ "$now_hash" = {{ loaded_hash | quote }} ] ||
+      reason="generated unit changed (e.g. a drop-in was added or removed)"
     for f in {{ restart_inputs | map('quote') | join(' ') }}; do
       [ -z "$reason" ] || break
       [ -e "$f" ] || continue
@@ -198,7 +208,8 @@
     chdir: /
     executable: /bin/bash
   vars:
-    need_reload: "{{ quadlet_need_reload.stdout | default('') | trim }}"
+    need_reload: "{{ (quadlet_loaded_state.stdout_lines | default([]))[0] | default('') }}"
+    loaded_hash: "{{ (quadlet_loaded_state.stdout_lines | default([]))[1] | default('') }}"
     restart_inputs: >-
       {{ [quadlet_path ~ '/' ~ container_friendly_name ~ '.container',
           quadlet_path ~ '/' ~ container_friendly_name ~ '.container.d',
