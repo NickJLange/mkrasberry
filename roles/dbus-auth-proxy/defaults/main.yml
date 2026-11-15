@@ -1,0 +1,14 @@
+---
+
+# Runs as the consuming service's container_user (e.g. ha), so the proxy and
+# the client share that user's dbus-socket named volume.
+dbus_auth_proxy_repo: "https://github.com/5L-Labs/dbus-auth-proxy.git"
+# Pinned commit: run code from a checkout that has been read, never :latest.
+dbus_auth_proxy_version: "b74932f63fb6f45864db52c21338c91736519d0e"
+dbus_auth_proxy_src: "{{ container_prefix }}/src/dbus-auth-proxy"
+
+# Chain xdg-dbus-proxy --filter --talk=org.bluez behind the proxy. Off by
+# default; consumers opt in, and -e dbus_auth_proxy_filter=false undoes it.
+dbus_auth_proxy_filter: false
+
+dbus_auth_proxy_user_unit_dir: "{{ container_prefix }}/.config/systemd/user"

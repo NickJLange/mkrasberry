@@ -44,5 +44,17 @@
 - import_tasks: config.yml
   tags: [service_install_config]
 
-- import_tasks: first_run.yml
+- name: Check if /dev/vchiq exists on host
+  stat:
+    path: /dev/vchiq
+  register: dev_vchiq_stat
+  tags: [service_install_binary]
+
+- name: Deploy Telegraf Quadlet container file
+  template:
+    src: telegraf.container.j2
+    dest: "{{ quadlet_path }}/{{ container_friendly_name }}.container"
+    mode: 0644
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
   tags: [service_install_binary]
