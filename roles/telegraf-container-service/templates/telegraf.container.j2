@@ -1,6 +1,9 @@
 [Unit]
 Description=Telegraf Container
 After=network-online.target
+{% for path in container_required_paths | default([]) %}
+AssertPathExists={{ path }}
+{% endfor %}
 
 [Container]
 Image={{ image_name }}
