@@ -17,7 +17,6 @@ Volume=dbus-socket:/run/dbus:rw
 Volume={{ container_prefix }}/etc/:/config:Z,idmap
 Volume={{ container_prefix }}/run:/run:Z,idmap
 Volume=/etc/letsencrypt/:/ssl/:ro,Z
-AutoUpdate=registry
 
 [Service]
 Restart=always

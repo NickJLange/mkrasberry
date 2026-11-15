@@ -13,6 +13,13 @@
       - quadlet_path is defined
       - podman_path is defined
 
+- name: Check whether {{ container_user }} exists
+  command: "id -u {{ container_user }}"
+  register: dbus_auth_proxy_user
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 - name: Read podman version as {{ container_user }}
   command: "{{ podman_path }} --version"
   args:
@@ -22,6 +29,7 @@
   check_mode: false
   become: yes
   become_user: "{{ container_user }}"
+  when: dbus_auth_proxy_user.rc == 0
 
 - name: Require podman with Quadlet .build support (>= 5.2)
   assert:
@@ -30,6 +38,7 @@
     fail_msg: "podman {{ podman_version }} cannot run Quadlet .build units; dbus-auth-proxy needs 5.2 or newer."
   vars:
     podman_version: "{{ dbus_auth_proxy_podman_version.stdout | regex_search('[0-9]+\\.[0-9]+(\\.[0-9]+)?') }}"
+  when: dbus_auth_proxy_user.rc == 0
 
 - name: Read {{ container_user }} uid for systemctl --user
   command: "id -u {{ container_user }}"
