@@ -10,7 +10,8 @@ Network=host
 AddCapability=IPC_LOCK
 Volume={{ container_prefix }}/etc/vault.hcl:/vault/config/vault.hcl:Z
 Volume={{ container_prefix }}/log:/vault/logs:Z
-Volume={{ container_prefix }}/data:{{ vault_data_path }}:Z
+# U: chown to the image's non-root vault user inside the rootless user namespace
+Volume={{ container_prefix }}/data:{{ vault_data_path }}:Z,U
 Exec=server
 
 [Service]

@@ -17,7 +17,8 @@
       The service role must deploy a Quadlet .container file before
       ansible-podman-systemd-generic post runs; roles still on the legacy
       podman-run first_run.yml (e.g. tvTunerSetup) are not supported.
-  when: not quadlet_unit.stat.exists
+  # In --check the role's template task only predicts the file
+  when: not quadlet_unit.stat.exists and not ansible_check_mode
   tags: container_systemd_start
 
 - block:

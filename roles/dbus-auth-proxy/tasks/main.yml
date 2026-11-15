@@ -213,6 +213,19 @@
       executable: /bin/bash
     when: dbus_auth_proxy_checkout is changed or dbus_auth_proxy_build_unit is changed
 
+  # Files can be up to date while the running container still has the old
+  # environment (e.g. a run interrupted between install and restart), so
+  # compare the bus target the container actually uses.
+  - name: Read the running proxy's system bus target
+    shell: >-
+      XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} podman inspect systemd-dbus-auth-proxy --format '{{ '{{' }}range .Config.Env{{ '}}' }}{{ '{{' }}println .{{ '}}' }}{{ '{{' }}end{{ '}}' }}' 2>/dev/null |
+      sed -n 's/^SYSTEM_DBUS=//p'
+    args:
+      executable: /bin/bash
+    register: dbus_auth_proxy_running_bus
+    changed_when: false
+    failed_when: false
+
   - name: Restart dbus-auth-proxy after a change
     shell: "XDG_RUNTIME_DIR=/run/user/{{ dbus_auth_proxy_uid.stdout }} systemctl --user restart dbus-auth-proxy.service"
     args:
@@ -221,7 +234,9 @@
     when: >-
       dbus_auth_proxy_checkout is changed or dbus_auth_proxy_build_unit is changed or
       dbus_auth_proxy_container_unit is changed or dbus_auth_proxy_filter_dropin is changed or
-      dbus_auth_proxy_filter_service is changed or dbus_auth_proxy_filter_removed is changed
+      dbus_auth_proxy_filter_service is changed or dbus_auth_proxy_filter_removed is changed or
+      (dbus_auth_proxy_running_bus.stdout | length > 0 and
+       dbus_auth_proxy_running_bus.stdout != ('/run/dbus-filter/bus' if dbus_auth_proxy_filter | bool else '/run/dbus/system_bus_socket'))
 
   - name: Make sure dbus-auth-proxy is running
     shell: >-
