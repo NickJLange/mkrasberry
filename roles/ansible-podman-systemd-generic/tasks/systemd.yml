@@ -24,13 +24,19 @@
 # Quadlet only pulls a missing image (Pull=missing) and AutoUpdate= is not used,
 # so pull here as master's pre did; a new image ID triggers the restart below.
 # Done first, before the legacy unit is stopped, so a failed pull leaves the
-# running service alone.
+# running service alone. With an image already local (a service role may have
+# pulled it before retiring its own legacy unit), a failed pull only warns.
 - name: Pull {{ image_name }}
   shell: |
     {% if container_user != 'root' %}
     export XDG_RUNTIME_DIR=/run/user/$(id -u)
     {% endif %}
-    {{ podman_path }} pull --quiet {{ image_name | quote }}
+    if ! {{ podman_path }} pull --quiet {{ image_name | quote }}; then
+      # Registry down: carry on with the local image if there is one, so a
+      # service role that already retired its legacy unit still gets started.
+      {{ podman_path }} image exists {{ image_name | quote }} || exit 1
+      echo "pull failed; using the local {{ image_name }}"
+    fi
   args:
     chdir: /
     executable: /bin/bash
