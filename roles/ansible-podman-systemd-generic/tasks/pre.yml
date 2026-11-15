@@ -43,25 +43,41 @@
       - container_prefix is defined
       - image_name is defined
       - container_home_url is defined
+    fail_msg: "Service variables are unset; a tag-limited run must include the playbook's key_vars tag (e.g. --tags key_vars,container_install_binary)."
+  tags: [always]
 
 - import_tasks: add_user.yml
 
   tags: [container_add_user]
 
-- import_tasks: install.yml
-
-  tags: [container_install_binary]
-
 # Checked as the service user, after add_user creates it: that is the podman the
 # Quadlet unit runs, and rootful podman can be broken on hosts that only run rootless.
-# In --check on a fresh host add_user only simulates the account, so there is
-# no user to become yet; skip the gate there instead of failing on sudo.
+# getent exits 2 only for "no such user"; any other failure (NSS, etc.) stops the run.
 - name: Check whether {{ container_user }} exists
-  command: "id -u {{ container_user }}"
+  command: "getent passwd {{ container_user }}"
   register: podman_gate_user
   changed_when: false
-  failed_when: false
+  failed_when: podman_gate_user.rc not in [0, 2]
   check_mode: false
+  tags: [always]
+
+- name: Fail when add_user did not create {{ container_user }}
+  fail:
+    msg: "{{ container_user }} does not exist; run with the container_add_user tag (or a full run) to create it."
+  when: podman_gate_user.rc == 2 and not ansible_check_mode
+  tags: [always]
+
+# In --check on a fresh host add_user only simulates the account, so every later
+# task that uses that user (install.yml chowns, version gate, systemctl --user)
+# would fail. Stop predicting here instead of guarding each of them.
+- name: Stop --check here for {{ container_user }}, which this run would create
+  debug:
+    msg: "{{ container_user }} does not exist yet; --check cannot predict tasks that run as that user. Ending this host's check here."
+  when: podman_gate_user.rc == 2 and ansible_check_mode
+  tags: [always]
+
+- meta: end_host
+  when: podman_gate_user.rc == 2 and ansible_check_mode
   tags: [always]
 
 - name: Read podman version
@@ -73,7 +89,6 @@
   check_mode: false
   become: yes
   become_user: "{{ container_user }}"
-  when: podman_gate_user.rc == 0
   tags: [always]
 
 - name: Require podman with the Quadlet features these units use (>= 5.0)
@@ -85,11 +100,14 @@
     fail_msg: "podman {{ podman_version }} at {{ podman_path }} is too old for these Quadlet units; 5.0 or newer is required."
   vars:
     podman_version: "{{ podman_version_out.stdout | regex_search('[0-9]+\\.[0-9]+(\\.[0-9]+)?') }}"
-  when: podman_gate_user.rc == 0
   tags: [always]
 
 
 
+
+- import_tasks: install.yml
+
+  tags: [container_install_binary]
 
 #- import_tasks: configure_client_interface.yml
 #  tags: [wireguard_configure_client]
