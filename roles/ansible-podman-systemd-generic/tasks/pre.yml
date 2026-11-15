@@ -3,12 +3,14 @@
 
 - set_fact:
     podman_path: "/usr/bin/podman"
+  tags: [always]
 
 
 - name: Check for podman in /usr/bin
   stat:
     path: "{{ podman_path }}"
   register: podman_ok
+  tags: [always]
 
 
 - name: Check for container-management tools
@@ -30,6 +32,7 @@
       msg: "Podman not installed - do that first"
     when: podman_local_ok.stat.exists  != true
   when: podman_ok.stat.exists  != true
+  tags: [always]
 
 - name: "Check critical variables are defined."
   assert:
@@ -51,6 +54,16 @@
 
 # Checked as the service user, after add_user creates it: that is the podman the
 # Quadlet unit runs, and rootful podman can be broken on hosts that only run rootless.
+# In --check on a fresh host add_user only simulates the account, so there is
+# no user to become yet; skip the gate there instead of failing on sudo.
+- name: Check whether {{ container_user }} exists
+  command: "id -u {{ container_user }}"
+  register: podman_gate_user
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags: [always]
+
 - name: Read podman version
   command: "{{ podman_path }} --version"
   args:
@@ -60,6 +73,8 @@
   check_mode: false
   become: yes
   become_user: "{{ container_user }}"
+  when: podman_gate_user.rc == 0
+  tags: [always]
 
 - name: Require podman with Quadlet support (>= 4.4)
   assert:
@@ -68,6 +83,8 @@
     fail_msg: "podman {{ podman_version }} at {{ podman_path }} has no Quadlet support; 4.4 or newer is required."
   vars:
     podman_version: "{{ podman_version_out.stdout | regex_search('[0-9]+\\.[0-9]+(\\.[0-9]+)?') }}"
+  when: podman_gate_user.rc == 0
+  tags: [always]
 
 
 

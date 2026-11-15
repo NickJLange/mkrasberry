@@ -10,9 +10,8 @@ Network=host
 AddCapability=IPC_LOCK
 Volume={{ container_prefix }}/etc/vault.hcl:/vault/config/vault.hcl:Z
 Volume={{ container_prefix }}/log:/vault/logs:Z
-Volume={{ container_prefix }}/data:/vault/file:Z
+Volume={{ container_prefix }}/data:{{ vault_data_path }}:Z
 Exec=server
-AutoUpdate=registry
 
 [Service]
 Restart=always
