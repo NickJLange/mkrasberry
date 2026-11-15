@@ -47,6 +47,12 @@
   when: not ansible_check_mode
   tags: container_systemd_start
 
+- name: Warn when {{ image_name }} could not be refreshed
+  debug:
+    msg: "WARNING: {{ quadlet_pull.stdout | trim }} (registry unreachable); {{ container_friendly_name }} runs the cached image."
+  when: quadlet_pull.stdout is defined and 'pull failed' in quadlet_pull.stdout
+  tags: container_systemd_start
+
 # Before the reload: record whether the loaded unit predates the .container on
 # disk (NeedDaemonReload, e.g. an earlier run wrote the unit but failed before
 # reloading) and a hash of Quadlet's generated unit. The restart task compares
@@ -62,7 +68,7 @@
     systemctl show -p NeedDaemonReload --value {{ container_friendly_name | quote }}.service
     gen=/run/systemd/generator
     {% endif %}
-    cat "$gen"/{{ container_friendly_name | quote }}.service 2>/dev/null | sha256sum | cut -d' ' -f1
+    { cat "$gen"/{{ container_friendly_name | quote }}.service 2>/dev/null || true; } | sha256sum | cut -d' ' -f1
   args:
     chdir: /
     executable: /bin/bash
@@ -183,7 +189,7 @@
     reason=""
     [ -n "$since" ] || reason="unknown start time"
     [ {{ need_reload | quote }} != yes ] || reason="loaded unit was older than the .container file"
-    now_hash=$(cat "$gen"/{{ container_friendly_name | quote }}.service 2>/dev/null | sha256sum | cut -d' ' -f1)
+    now_hash=$( { cat "$gen"/{{ container_friendly_name | quote }}.service 2>/dev/null || true; } | sha256sum | cut -d' ' -f1)
     [ -n "$reason" ] || [ -z {{ loaded_hash | quote }} ] || [ "$now_hash" = {{ loaded_hash | quote }} ] ||
       reason="generated unit changed (e.g. a drop-in was added or removed)"
     for f in {{ restart_inputs | map('quote') | join(' ') }}; do
