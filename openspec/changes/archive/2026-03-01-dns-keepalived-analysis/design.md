@@ -98,30 +98,73 @@ Each server runs:
 - VIP becomes the DNS address for that region
 - If one server fails, VIP moves to other within seconds
 
-### D3: Network Architecture
+### D3: Preemption Policy
+
+**Decision: DELAYED preemption (30 second delay)**
+
+| Policy | Behavior | Pros | Cons |
+|--------|----------|------|------|
+| Immediate | Master reclaims VIP immediately on recovery | Fastest return to normal | Risk of flapping if master is unstable |
+| Delayed (chosen) | Master waits 30s after recovery | Prevents flapping during intermittent issues | Slightly longer time to return to normal |
+
+**Rationale**: The 30-second delay prevents VIP flapping when the master server experiences brief network interruptions or during restart scenarios.
+
+### D4: Network Architecture
 
 **VIP Address Plan (per region):**
 - Reserve .2 for DNS VIP in each subnet
-- DHCP range: .11 - .254 (leaving .2 for VIP, .10 for infrastructure)
+- DHCP range: .11 - .254 (leaving .2 for VIP, .10 for infrastructure), **excluding the statically addressed DNS servers** inside that range (WI .250/.251, NY .110/.112, Miyagi .100/.101) via DHCP exclusions or reservations
 
 ```
 Wisconsin (192.168.20.0/24):
   marsAlpha (192.168.20.250) ←→ marsBeta (192.168.20.251)
   VIP: 192.168.20.2
+  virtual_router_id: 51
   DHCP: 192.168.20.11 - 192.168.20.254
 
 New York (192.168.100.0/24):
   terraOmega (192.168.100.112) ←→ terraPhi (192.168.100.110)
   VIP: 192.168.100.2
+  virtual_router_id: 52
   DHCP: 192.168.100.11 - 192.168.100.254
 
 Miyagi (192.168.3.0/24):
   alphaCenA (192.168.3.100) ←→ alphaCenB (192.168.3.101)
   VIP: 192.168.3.2
+  virtual_router_id: 53
   DHCP: 192.168.3.11 - 192.168.3.254
 ```
 
 Clients would use regional VIP (.2) as their DNS server.
+
+### D5: Keepalived Configuration
+
+**Configuration Pattern (6 configs total - 2 per region):**
+
+```
+Wisconsin:
+  marsAlpha (Master): priority 101, virtual_router_id 51
+  marsBeta (Backup): priority 100, virtual_router_id 51
+
+New York:
+  terraOmega (Master): priority 101, virtual_router_id 52
+  terraPhi (Backup): priority 100, virtual_router_id 52
+
+Miyagi:
+  alphaCenA (Master): priority 101, virtual_router_id 53
+  alphaCenB (Backup): priority 100, virtual_router_id 53
+```
+
+**Key Configuration Parameters:**
+- `advert_int`: 1 second (advertisement interval)
+- `preempt_delay`: 30 seconds (delayed preemption). keepalived only honours it when the instance starts in `state BACKUP`, so both nodes start as BACKUP and priority picks the master. Expected failback after recovery ≈ 30s + master-down interval (≈ 3 × `advert_int`, about 3–4s)
+- `garp_master_delay`: 5 seconds (gratuitous ARP delay)
+- Interface tracking: Built-in interface monitoring (no custom track scripts)
+
+**Network Requirements:**
+- VRRP multicast: 224.0.0.18
+- Protocol: 112
+- Note: VRRP runs directly on Linux DNS servers via keepalived daemon, not on routers/switches
 
 ## Risks / Trade-offs
 
@@ -142,13 +185,16 @@ Clients would use regional VIP (.2) as their DNS server.
 ### Operational Risks
 
 - **[Risk]** Keepalived misconfiguration causes failover storms
-  - **Mitigation**: Test failover in maintenance window, set appropriate timeouts
+  - **Mitigation**: Test failover in maintenance window, set appropriate timeouts, use delayed preemption (30s)
 
 - **[Risk]** Failover doesn't trigger DNS service restart
   - **Mitigation**: Monitor both master and backup, verify DNS service on both
 
 - **[Risk]** Upstream Unbound not configured for VIP
   - **Mitigation**: Unbound listens on all interfaces by default, verify
+
+- **[Risk]** Keepalived state not monitored
+  - **Mitigation**: Telegraf to collect keepalived state and forward it to Datadog via OpenTelemetry OTLP (task 3.3, not yet implemented)
 
 ### Performance Trade-offs
 
@@ -181,7 +227,9 @@ Clients would use regional VIP (.2) as their DNS server.
 ## Open Questions
 
 1. ~~VIP addresses~~ - **RESOLVED**: Using .2 for each regional subnet
-2. ~~Network equipment~~ - **RESOLVED**: Ubiquity and commodity switches between servers - need VRRP compatibility check
-3. ~~Client migration~~ - **RESOLVED**: Migrate clients gradually
+2. ~~Network equipment~~ - **RESOLVED**: Ubiquity and commodity switches allow VRRP multicast (224.0.0.18) and protocol 112
+3. ~~Client migration~~ - **RESOLVED**: Migrate clients gradually via DHCP
 4. ~~Cross-region failover~~ - **RESOLVED**: No - too complex
-5. ~~Monitoring~~ - **RESOLVED**: Yes - alerts for keepalived state changes
+5. ~~Monitoring~~ - **RESOLVED**: Telegraf → Datadog via OpenTelemetry OTLP format (keepalived state collection not yet implemented; task 3.3)
+6. ~~Preemption policy~~ - **RESOLVED**: DELAYED preemption with 30-second delay
+7. ~~Health checks~~ - **RESOLVED**: Use keepalived's built-in interface tracking (no custom track scripts). This only catches link loss: a crashed Pi-hole/Unbound will not move the VIP, so DNS-process failure is out of scope for this design (a `vrrp_script` DNS probe is the follow-up if needed)
