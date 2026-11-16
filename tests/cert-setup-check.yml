@@ -1,0 +1,65 @@
+---
+# Run as root inside a disposable Linux container, never on a managed host,
+# and only with --check (it fails without it):
+# ansible-playbook -i localhost, -c local --check tests/cert-setup-check.yml
+- name: Exercise cert-setup in check mode for a new and an existing account
+  hosts: localhost
+  gather_facts: false
+  vars:
+    cert_dir: /tmp/cert-setup-check
+    certpush_home: /tmp/certpush-check-home
+    certpush_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIErP4cB7DhXGzd7edARVLBbiPiFxy8PjxaTzNL4xo8Gs test-only"
+  tasks:
+    - name: Require --check
+      ansible.builtin.assert:
+        that: ansible_check_mode
+
+    - name: Check mode on a host where the push account doesn't exist yet
+      ansible.builtin.include_role:
+        name: cert-setup
+      vars:
+        certpush_user: certpush_new
+
+    - name: Look up the new account after the check run
+      ansible.builtin.command: getent passwd certpush_new
+      register: new_account
+      check_mode: false
+      changed_when: false
+      failed_when: false
+
+    - name: Verify check mode created nothing
+      ansible.builtin.assert:
+        that:
+          - new_account.rc == 2
+
+    - name: Create an existing push account (outside check mode)
+      ansible.builtin.user:
+        name: certpush_existing
+        home: "{{ certpush_home }}"
+        system: true
+      check_mode: false
+
+    - name: Check mode on a host where the push account already exists
+      ansible.builtin.include_role:
+        name: cert-setup
+      vars:
+        certpush_user: certpush_existing
+
+    - name: Inspect the existing account's authorized_keys
+      ansible.builtin.stat:
+        path: "{{ certpush_home }}/.ssh/authorized_keys"
+      register: existing_keys
+
+    - name: Verify check mode left the existing account unchanged
+      ansible.builtin.assert:
+        that:
+          - not existing_keys.stat.exists
+
+    - name: Remove the existing test account so reruns start clean
+      ansible.builtin.user:
+        name: certpush_existing
+        state: absent
+        remove: true
+        force: true
+      check_mode: false

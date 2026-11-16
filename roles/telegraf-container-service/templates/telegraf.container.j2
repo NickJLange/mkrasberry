@@ -1,0 +1,27 @@
+[Unit]
+Description=Telegraf Container
+After=network-online.target
+{% for path in container_required_paths | default([]) %}
+AssertPathExists={{ path }}
+{% endfor %}
+
+[Container]
+Image={{ image_name }}
+ContainerName={{ container_friendly_name }}
+EnvironmentFile={{ container_env_file }}
+Network=host
+{% if dev_vchiq_stat.stat.exists %}
+AddDevice=/dev/vchiq
+{% endif %}
+Annotation=run.oci.keep_original_groups=1
+User={{ container_user }}:{{ container_group }}
+Volume=/:/hostfs:ro
+Volume={{ container_prefix }}/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+Volume={{ container_prefix }}/etc/telegraf.d:/etc/telegraf/telegraf.d:ro
+Exec=--config-directory /etc/telegraf/telegraf.d/
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

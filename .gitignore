@@ -173,7 +173,6 @@ roles/role-install-gcloud/files/google_compute_engine.pub
 .gemini/
 .kilocode/
 .opencode/
-.beads/
 
 # Galaxy roles installed from requirements.yml (ansible-galaxy install -r requirements.yml)
 roles/mikolak-net.raspi_config/

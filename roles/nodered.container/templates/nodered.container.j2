@@ -1,0 +1,21 @@
+[Unit]
+Description=Node-RED Container
+After=network-online.target
+{% for path in container_required_paths | default([]) %}
+AssertPathExists={{ path }}
+{% endfor %}
+
+[Container]
+Image={{ image_name }}
+ContainerName={{ service_name }}
+EnvironmentFile={{ container_env_file }}
+Network=host
+UserNS=keep-id
+Volume={{ container_prefix }}/data:/data:Z
+Volume=/etc/letsencrypt/:/ssl/:ro,Z
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
