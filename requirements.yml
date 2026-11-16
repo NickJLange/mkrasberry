@@ -1,3 +1,16 @@
 ---
 collections:
   - name: ansible.posix
+
+# Install with:
+#   ansible-galaxy collection install -r requirements.yml
+#   ansible-galaxy role install -r requirements.yml -p roles --no-deps
+# --no-deps matters: raspi_config also depends on Stouts.hostname, which is a git
+# submodule at roles/Stouts.hostname and must not be overwritten by galaxy.
+roles:
+  # Used by playbooks/initial-playbook-stage-1*.yml
+  - name: mikolak-net.raspi_config
+    version: 1.2.3
+  # raspi_config's locale dependency (same version it pins)
+  - name: oefenweb.locales
+    version: v1.0.40
