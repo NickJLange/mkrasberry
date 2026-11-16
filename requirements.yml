@@ -2,7 +2,9 @@
 collections:
   - name: ansible.posix
 
-# Install with:  ansible-galaxy role install -r requirements.yml -p roles --no-deps
+# Install with:
+#   ansible-galaxy collection install -r requirements.yml
+#   ansible-galaxy role install -r requirements.yml -p roles --no-deps
 # --no-deps matters: raspi_config also depends on Stouts.hostname, which is a git
 # submodule at roles/Stouts.hostname and must not be overwritten by galaxy.
 roles:
