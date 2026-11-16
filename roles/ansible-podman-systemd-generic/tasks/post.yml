@@ -8,6 +8,41 @@
       - container_friendly_name is defined
       - container_prefix is defined
 
+# Same list the service's .container template renders as AssertPathExists=,
+# checked here as the service user so a deploy fails before the restart.
+- name: Check host paths required by {{ container_friendly_name }}
+  stat:
+    path: "{{ item }}"
+    # server.cert/server.key are symlinks; validate the target, not the link
+    follow: true
+  loop: "{{ container_required_paths | default([]) }}"
+  register: required_paths
+  become: yes
+  become_user: "{{ container_user }}"
+  tags: [container_systemd]
+
+# In --check the service role may only have predicted creating a path (e.g.
+# telegraf's envfile), so a missing path is a warning there, not a failure.
+- name: Warn in --check about required paths that do not exist yet
+  debug:
+    msg: "{{ item.item }} does not exist yet; a real run fails here unless the service role creates it."
+  when: ansible_check_mode and not item.stat.exists
+  loop: "{{ required_paths.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  tags: [container_systemd]
+
+- name: Fail when a required host path is missing or unreadable by {{ container_user }}
+  fail:
+    msg: "{{ container_friendly_name }} requires {{ item.item }}, which does not exist or is not readable (or, for a directory, not searchable) by {{ container_user }}."
+  when: >-
+    (not item.stat.exists and not ansible_check_mode) or
+    (item.stat.exists and (not item.stat.readable or (item.stat.isdir and not item.stat.executable)))
+  loop: "{{ required_paths.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  tags: [container_systemd]
+
 - import_tasks: systemd.yml
   become: yes
   become_user: "{{ container_user }}"

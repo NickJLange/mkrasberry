@@ -148,20 +148,10 @@ module.exports = {
     // for details on its contents.
     // This property can be either an object, containing both a (private) key and a (public) certificate,
     // or a function that returns such an object:
-    //// https object:
-    //https: {
-    //  key: require("fs").readFileSync('privkey.pem'),
-    //  cert: require("fs").readFileSync('cert.pem')
-    //},
-    ////https function:
-    // https: function() {
-    //     // This function should return the options object, or a Promise
-    //     // that resolves to the options object
-    //     return {
-    //         key: require("fs").readFileSync('privkey.pem'),
-    //         cert: require("fs").readFileSync('cert.pem')
-    //     }
-    // },
+    https: {
+        key: require("fs").readFileSync('/ssl/server.key'),
+        cert: require("fs").readFileSync('/ssl/server.cert')
+    },
 
     // The following property can be used to refresh the https settings at a
     // regular time interval in hours.

@@ -19,6 +19,10 @@
         name: ansible-podman-systemd-generic
         tasks_from: "pre"
     - import_role:
+        name: dbus-auth-proxy
+      vars:
+        dbus_auth_proxy_filter: true
+    - import_role:
         name: homeassistant.container
     - import_role:
         name: ansible-podman-systemd-generic

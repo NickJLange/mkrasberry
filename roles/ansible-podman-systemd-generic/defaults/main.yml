@@ -12,7 +12,10 @@ container_management_polkit_path: "/etc/polkit-1/localauthority/50-local.d"
 container_system_prefix: "/usr/local"
 container_conf_dir: "{{ container_prefix }}/data/"
 
+quadlet_path: "{{ (container_user == 'root') | ternary('/etc/containers/systemd', container_prefix + '/.config/containers/systemd') }}"
 
 container_timeout: "10"
 container_restart_policy: "on-failure"
-systemd_scope: "system"
+systemd_scope: "{{ (container_user == 'root') | ternary('system', 'user') }}"
+
+

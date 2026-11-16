@@ -2,7 +2,7 @@
 # Queries Pi-hole API from all pihole servers in inventory
 {% for host in groups['pihole'] %}
 [[inputs.http]]
-  urls = ["http://{{ hostvars[host].ansible_host }}/admin/api.php?summaryRaw"]
+  urls = ["http://{{ hostvars[host].ansible_host | default(hostvars[host].ansible_ssh_host) | default(host) }}/admin/api.php?summaryRaw"]
   name_override = "pihole"
   interval = "60s"
   timeout = "10s"
@@ -16,7 +16,7 @@
 # Tests that internal DNS resolution works across the fleet
 {% for host in groups['pihole'] %}
 [[inputs.exec]]
-  commands = ["dig +short {{ host }}.{{ dns_subdomain_base }} @{{ hostvars[host].ansible_host }}#5335 +time=3 +tries=2"]
+  commands = ["dig +short {{ host }}.{{ dns_subdomain_base }} @{{ hostvars[host].ansible_host | default(hostvars[host].ansible_ssh_host) | default(host) }}#5335 +time=3 +tries=2"]
   name_override = "dns_internal_latency"
   interval = "60s"
   data_format = "value"

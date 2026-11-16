@@ -10,8 +10,8 @@
 - name: Add default config
   template:
     src: vault.config.j2
-    dest: "{{container_prefix}}/etc/vault.config"
-    mode: 0600
+    dest: "{{container_prefix}}/etc/vault.hcl"
+    mode: 0644
     owner: "{{container_user}}"
     group: "{{container_group}}"
 

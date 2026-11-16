@@ -8,3 +8,9 @@ telegraf_dns_external_domains:
   - google.com
   - cloudflare.com
   - github.com
+
+# Mounted into the container; rendered as AssertPathExists= and checked at deploy
+container_required_paths:
+  - "{{ container_env_file }}"
+  - "{{ container_prefix }}/etc/telegraf.conf"
+  - "{{ container_prefix }}/etc/telegraf.d"
