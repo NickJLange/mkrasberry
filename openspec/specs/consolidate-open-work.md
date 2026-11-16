@@ -79,3 +79,21 @@ Merge all open PRs, branches, and submodule updates into master to clean up repo
 3. ~~Should stale local branches be deleted?~~ **RESOLVED**: Keep & rebase `fix/msmtp-conditional-and-loop-error`; delete others
 
 ## Status: APPROVED — Ready for Implementation
+
+---
+
+## wifiClientSetup wpa_cli reload robustness
+
+### Goal
+Make the `wifiClientSetup` role resilient when reloading the wifi configuration with `wpa_cli -i wlan0 reconfigure` so that a missing control socket (or similar transient issues) do not cause the playbook to fail on hosts like terraTau.
+
+### Implemented Changes
+- Updated `roles/wifiClientSetup/tasks/install.yml` `reload the config` task so it:
+  - Continues to run only when `wpa_supplicant_updated` is defined.
+  - Registers the result of `wpa_cli -i wlan0 reconfigure`.
+  - Treats non-zero return codes as non-fatal (using `failed_when: false`).
+
+### Verification
+- Run the same targeted wifiClientSetup test playbook against terraTau used previously.
+  - Confirm that the play completes successfully even if `wpa_cli` reports it cannot connect to the control socket.
+  - Radio unblocking is no longer part of this task: since #55 it lives in `roles/wifiClientSetup/tasks/rfkill.yml`, which stage-2 runs on every play and `install.yml` imports.
